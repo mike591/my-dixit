@@ -10,30 +10,30 @@ type DataProps = {
 
 const App: React.FC = () => {
   const [data, setData] = useState<DataProps>();
-  const wsRef = useRef<WebSocket>();
+  // const wsRef = useRef<WebSocket>();
 
-  useEffect(() => {
-    if (!wsRef.current) {
-      const socket = new WebSocket("ws://localhost:3001");
-      wsRef.current = socket;
+  // useEffect(() => {
+  //   if (!wsRef.current) {
+  //     const socket = new WebSocket("ws://localhost:3001");
+  //     wsRef.current = socket;
 
-      socket.addEventListener("open", (event) => {
-        socket.send("Hello Server!");
-      });
+  //     socket.addEventListener("open", (event) => {
+  //       socket.send("Hello Server!");
+  //     });
 
-      socket.addEventListener("message", (event) => {
-        console.log("Message from server ", event.data);
-      });
-    }
-  }, []);
+  //     socket.addEventListener("message", (event) => {
+  //       console.log("Message from server ", event.data);
+  //     });
+  //   }
+  // }, []);
 
-  useEffect(() => {
-    const init = async () => {
-      const response = await axios.get("http://localhost:3001/");
-      setData(response.data);
-    };
-    init();
-  }, []);
+  // useEffect(() => {
+  //   const init = async () => {
+  //     const response = await axios.get("http://localhost:3001/");
+  //     setData(response.data);
+  //   };
+  //   init();
+  // }, []);
 
   return (
     <div className="App flex justify-center bg-gray-100">

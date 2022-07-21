@@ -1,9 +1,13 @@
 var express = require("express");
 var router = express.Router();
 
-/* GET home page. */
-router.get("/", function (req, res, next) {
-  res.send({ data: "Hello world from express!" });
-});
+const pool = require("server/db");
+
+// try {
+//   const response = await pool.query("SELECT * FROM users");
+//   console.log(response);
+// } catch (error) {
+//   console.error(error);
+// }
 
 module.exports = router;
