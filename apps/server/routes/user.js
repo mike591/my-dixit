@@ -2,7 +2,6 @@ const { v4: uuidv4 } = require("uuid");
 const { faker } = require("@faker-js/faker");
 var express = require("express");
 var router = express.Router();
-
 const pool = require("server/db");
 
 // get user
@@ -26,6 +25,7 @@ router.post("/", async (req, res, next) => {
     res.json(response.rows[0]);
   } catch (error) {
     console.error(error);
+    next(error);
   }
 });
 
@@ -46,6 +46,7 @@ router.put("/:id?", async (req, res, next) => {
     res.json(response.rows[0]);
   } catch (error) {
     console.error(error);
+    next(error);
   }
 });
 
