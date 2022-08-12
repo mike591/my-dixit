@@ -136,23 +136,25 @@ router.post("/:gameKey?/start", async (req, res, next) => {
     if (!currentRoundId) throw new Error("currentRoundId is not valid");
 
     const deck = generateDeck();
-    const gameUsers = await getAllUsersInGame();
+    let gameUsers = await getAllUsersInGame(gameId);
+    gameUsers = shuffle(gameUsers);
 
     await Promise.all(
-      gameUsers.map(async (gameUser) => {
+      gameUsers.map(async (gameUser, idx) => {
         const hand = [];
         for (let i = 0; i < 6; i++) {
           hand.push(deck.pop());
         }
+
         return await pool.query(
-          'UPDATE "gameUsers" SET "hand"=$1 WHERE "id"=$2 RETURNING *',
-          [hand, gameUser.id]
+          'UPDATE "gameUsers" SET "hand" = $1, "order" = $2 WHERE "id" = $3 RETURNING *',
+          [hand, idx, gameUser.id]
         );
       })
     );
 
     const updateGameResponse = await pool.query(
-      'UPDATE "games" SET "gameMode"=$1, "numPoints"=$2, "isStarted"=$3, "currentRound"=$4, "deck"=$5, "discardPile"=$6 WHERE "id"=$7 RETURNING *',
+      'UPDATE "games" SET "gameMode" = $1, "numPoints" = $2, "isStarted" = $3, "currentRound" = $4, "deck" = $5, "discardPile" = $6 WHERE "id" = $7 RETURNING *',
       [gameMode, numPoints, true, currentRoundId, deck, [], gameId]
     );
 
