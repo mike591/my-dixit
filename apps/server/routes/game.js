@@ -68,11 +68,16 @@ router.get("/:gameKey?", async (req, res, next) => {
     );
 
     if (!userInGameResponse.rowCount) {
-      console.log("hi");
-      // TODO: set up new user
+      const newGameUsersId = uuidv4();
+      await pool.query(
+        'INSERT INTO "gameUsers" (id, "gameId", "userId", "isAdmin") VALUES ($1, $2, $3, $4) RETURNING *',
+        [newGameUsersId, gameId, userId, true]
+      );
     }
 
-    // TODO: return game info
+    // TODO: set up websocket subscriptions
+
+    res.json(game);
   } catch (error) {
     console.error(error);
     next(error);
@@ -86,7 +91,7 @@ router.post("/", async (req, res, next) => {
   try {
     const userId = req.headers.user;
 
-    if (!user) throw new Error("user id is missing");
+    if (!userId) throw new Error("user id is missing");
 
     const newGameId = uuidv4();
     const gameKey = newGameId.slice(-6);
@@ -123,8 +128,8 @@ router.post("/:gameKey?/start", async (req, res, next) => {
 
     const newRoundId = uuidv4();
     const newRoundResponse = await pool.query(
-      'INSERT INTO rounds (id, "gameId") VALUES ($1, $2) RETURNING *',
-      [newRoundId, gameId]
+      "INSERT INTO rounds (id) VALUES ($1) RETURNING *",
+      [newRoundId]
     );
     const currentRoundId = newRoundResponse.rows[0]?.id;
 
@@ -147,12 +152,15 @@ router.post("/:gameKey?/start", async (req, res, next) => {
     );
 
     const updateGameResponse = await pool.query(
-      'UPDATE "games" SET "gameMode"=$1, "numPoints"=$2, "isStarted"=$3, "currentRound"=$4, "deck"=$5 WHERE "gameKey"=$6 RETURNING *',
-      [gameMode, numPoints, true, deck, currentRoundId]
+      'UPDATE "games" SET "gameMode"=$1, "numPoints"=$2, "isStarted"=$3, "currentRound"=$4, "deck"=$5, "discardPile"=$6 WHERE "id"=$7 RETURNING *',
+      [gameMode, numPoints, true, currentRoundId, deck, [], gameId]
     );
 
     // TODO: check if updateGameResponse is valid, publish players their new cards?
-    res.json(updateGameResponse);
+    res.json({
+      game: updateGameResponse.rows[0],
+      round: newRoundResponse.rows[0],
+    });
   } catch (error) {
     console.error(error);
     next(error);
