@@ -75,7 +75,7 @@ router.get("/:gameKey?", async (req, res, next) => {
       );
     }
 
-    // TODO: set up websocket subscriptions
+    // TODO: set up websocket subscriptions to game and gameUser
 
     res.json(game);
   } catch (error) {
@@ -126,15 +126,6 @@ router.post("/:gameKey?/start", async (req, res, next) => {
 
     if (!gameId) throw new Error("Game ID is not valid");
 
-    const newRoundId = uuidv4();
-    const newRoundResponse = await pool.query(
-      "INSERT INTO rounds (id) VALUES ($1) RETURNING *",
-      [newRoundId]
-    );
-    const currentRoundId = newRoundResponse.rows[0]?.id;
-
-    if (!currentRoundId) throw new Error("currentRoundId is not valid");
-
     const deck = generateDeck();
     let gameUsers = await getAllUsersInGame(gameId);
     gameUsers = shuffle(gameUsers);
@@ -153,12 +144,21 @@ router.post("/:gameKey?/start", async (req, res, next) => {
       })
     );
 
+    const newRoundId = uuidv4();
+    const newRoundResponse = await pool.query(
+      'INSERT INTO rounds (id, "activeUserId", "roundNum") VALUES ($1, $2, $3) RETURNING *',
+      [newRoundId, gameUsers[0].userId, 0]
+    );
+    const currentRoundId = newRoundResponse.rows[0]?.id;
+
+    if (!currentRoundId) throw new Error("currentRoundId is not valid");
+
     const updateGameResponse = await pool.query(
       'UPDATE "games" SET "gameMode" = $1, "numPoints" = $2, "isStarted" = $3, "currentRound" = $4, "deck" = $5, "discardPile" = $6 WHERE "id" = $7 RETURNING *',
       [gameMode, numPoints, true, currentRoundId, deck, [], gameId]
     );
 
-    // TODO: check if updateGameResponse is valid, publish players their new cards?
+    // TODO: publish players their new cards, game and round
     res.json({
       game: updateGameResponse.rows[0],
       round: newRoundResponse.rows[0],
@@ -169,9 +169,19 @@ router.post("/:gameKey?/start", async (req, res, next) => {
   }
 });
 
-// TODO: submit card and prompt, update round currentPrompt, currentCardId, gameStage
-router.post("/:id?/init-round", async (req, res, next) => {
+router.post("/:gameKey?/init-round", async (req, res, next) => {
   try {
+    const gameKey = req.params?.gameKey;
+    const { cardNum, prompt } = req.body;
+
+    const game = await getGameFromGameKey(gameKey);
+
+    const updateRoundResponse = await pool.query(
+      'UPDATE "rounds" SET "currentCardNum" = $1, "currentPrompt" = $2, "gameStage" = $3 WHERE "id" = $4 RETURNING *',
+      [cardNum, prompt, 1, game.currentRound]
+    );
+
+    res.json(updateRoundResponse.rows[0]);
   } catch (error) {
     console.error(error);
     next(error);
@@ -179,7 +189,7 @@ router.post("/:id?/init-round", async (req, res, next) => {
 });
 
 // TODO: submit fake card for round, progress gameStage when everyone is finished
-router.post("/:id?/submit-card", async (req, res, next) => {
+router.post("/:gameKey?/submit-card", async (req, res, next) => {
   try {
   } catch (error) {
     console.error(error);
@@ -188,7 +198,7 @@ router.post("/:id?/submit-card", async (req, res, next) => {
 });
 
 // TODO: select card for round, progress gameStage when everyone is finished
-router.post("/:id?/submit-guess", async (req, res, next) => {
+router.post("/:gameKey?/submit-guess", async (req, res, next) => {
   try {
   } catch (error) {
     console.error(error);
@@ -197,7 +207,7 @@ router.post("/:id?/submit-guess", async (req, res, next) => {
 });
 
 // TODO: wait for everyone to hit next, determine if game is done
-router.post("/:id?/ready", async (req, res, next) => {
+router.post("/:gameKey?/ready", async (req, res, next) => {
   try {
   } catch (error) {
     console.error(error);
