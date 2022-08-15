@@ -154,7 +154,7 @@ router.post("/:gameKey?/start", async (req, res, next) => {
     if (!currentRoundId) throw new Error("currentRoundId is not valid");
 
     const updateGameResponse = await pool.query(
-      'UPDATE "games" SET "gameMode" = $1, "numPoints" = $2, "isStarted" = $3, "currentRound" = $4, "deck" = $5, "discardPile" = $6 WHERE "id" = $7 RETURNING *',
+      'UPDATE "games" SET "gameMode" = $1, "numPoints" = $2, "isStarted" = $3, "currentRoundId" = $4, "deck" = $5, "discardPile" = $6 WHERE "id" = $7 RETURNING *',
       [gameMode, numPoints, true, currentRoundId, deck, [], gameId]
     );
 
@@ -176,9 +176,12 @@ router.post("/:gameKey?/init-round", async (req, res, next) => {
 
     const game = await getGameFromGameKey(gameKey);
 
+    if (!game || prompt || cardNum === undefined)
+      throw new Error("game, prompt and card num is required!");
+
     const updateRoundResponse = await pool.query(
       'UPDATE "rounds" SET "currentCardNum" = $1, "currentPrompt" = $2, "gameStage" = $3 WHERE "id" = $4 RETURNING *',
-      [cardNum, prompt, 1, game.currentRound]
+      [cardNum, prompt, 1, game.currentRoundId]
     );
 
     res.json(updateRoundResponse.rows[0]);
@@ -188,9 +191,45 @@ router.post("/:gameKey?/init-round", async (req, res, next) => {
   }
 });
 
-// TODO: submit fake card for round, progress gameStage when everyone is finished
 router.post("/:gameKey?/submit-card", async (req, res, next) => {
   try {
+    const userId = req.headers.user;
+    const gameKey = req.params?.gameKey;
+    const { cardNum } = req.body;
+
+    if (!userId || cardNum === undefined)
+      throw new Error("user id and card num is required");
+
+    const game = getGameFromGameKey(gameKey);
+
+    const newUserRoundActionId = uuidv4();
+    const createUserRoundActionResponse = await pool.query(
+      'INSERT into "userRoundActions" ("id", "roundId", "submittedCardNum") VALUES ($1, $2, $3) RETURNING *',
+      [newUserRoundActionId, game.currentRoundId, cardNum]
+    );
+
+    const allUsersInGameResponse = await pool.query(
+      'SELECT * from "gameUsers" WHERE "gameId" = $1',
+      [game.id]
+    );
+
+    const allCurrentRoundActionsResponse = await pool.query(
+      'SELECT * from "userRoundActions" WHERE "roundId" = $1',
+      [game.currentRoundId]
+    );
+
+    const usersAwaitingSubmissionCount = allUsersInGameResponse.rowCount - 1;
+    if (
+      allCurrentRoundActionsResponse.rowCount === usersAwaitingSubmissionCount
+    ) {
+      // TODO: publish new round response
+      await pool.query(
+        'UPDATE "rounds" SET "gameStage" = $1 WHERE "id" = $2 RETURNING *',
+        [2, game.currentRoundId]
+      );
+    }
+
+    res.json(createUserRoundActionResponse.rows[0]);
   } catch (error) {
     console.error(error);
     next(error);
