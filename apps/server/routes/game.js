@@ -204,8 +204,8 @@ router.post("/:gameKey?/submit-card", async (req, res, next) => {
 
     const newUserRoundActionId = uuidv4();
     const createUserRoundActionResponse = await pool.query(
-      'INSERT into "userRoundActions" ("id", "roundId", "submittedCardNum") VALUES ($1, $2, $3) RETURNING *',
-      [newUserRoundActionId, game.currentRoundId, cardNum]
+      'INSERT into "userRoundActions" ("id", "userId" "roundId", "submittedCardNum") VALUES ($1, $2, $3, $4) RETURNING *',
+      [newUserRoundActionId, userId, game.currentRoundId, cardNum]
     );
 
     const allUsersInGameResponse = await pool.query(
@@ -230,6 +230,23 @@ router.post("/:gameKey?/submit-card", async (req, res, next) => {
     }
 
     res.json(createUserRoundActionResponse.rows[0]);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+});
+
+router.get("/:gameKey?/choices", async (req, res, next) => {
+  try {
+    const gameKey = req.params?.gameKey;
+
+    const game = getGameFromGameKey(gameKey);
+    const allCurrentRoundActionsResponse = await pool.query(
+      'SELECT * from "userRoundActions" WHERE "roundId" = $1',
+      [game.currentRoundId]
+    );
+
+    return res.json(allCurrentRoundActionsResponse.rows);
   } catch (error) {
     console.error(error);
     next(error);
