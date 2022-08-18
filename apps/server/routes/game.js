@@ -258,47 +258,74 @@ router.get("/:gameKey?/choices", async (req, res, next) => {
 });
 
 router.post("/:gameKey?/submit-guess", async (req, res, next) => {
-  const userId = req.headers.user;
-  const gameKey = req.params?.gameKey;
-  const { cardNum } = req.body;
-
-  if (!userId || cardNum === undefined)
-    throw new Error("user id and card num is required");
-
-  const game = getGameFromGameKey(gameKey);
-
-  const updateUserRoundActionsResponse = await pool.query(
-    'UPDATE "userRoundActions" SET "submittedCardNum" = $1 WHERE "roundId" = $2 AND "userId" = $3 RETURNING *',
-    [game.currentRoundId, userId]
-  );
-
-  const allCurrentRoundActionsResponse = await pool.query(
-    'SELECT * from "userRoundActions" WHERE "roundId" = $1 AND "submittedCardNum" IS NOT NULL',
-    [game.currentRoundId]
-  );
-
-  const usersAwaitingSubmissionCount = game.numUsers - 1;
-  if (
-    allCurrentRoundActionsResponse.rowCount === usersAwaitingSubmissionCount
-  ) {
-    // TODO: publish new round response
-    await pool.query(
-      'UPDATE "rounds" SET "gameStage" = $1 WHERE "id" = $2 RETURNING *',
-      [3, game.currentRoundId]
-    );
-  }
-
-  res.json(updateUserRoundActionsResponse.rows[0]);
   try {
+    const userId = req.headers.user;
+    const gameKey = req.params?.gameKey;
+    const { cardNum } = req.body;
+
+    if (!userId || cardNum === undefined)
+      throw new Error("user id and card num is required");
+
+    const game = getGameFromGameKey(gameKey);
+
+    const updateUserRoundActionsResponse = await pool.query(
+      'UPDATE "userRoundActions" SET "submittedCardNum" = $1 WHERE "roundId" = $2 AND "userId" = $3 RETURNING *',
+      [cardNum, game.currentRoundId, userId]
+    );
+
+    const allCurrentRoundActionsResponse = await pool.query(
+      'SELECT * from "userRoundActions" WHERE "roundId" = $1 AND "submittedCardNum" IS NOT NULL',
+      [game.currentRoundId]
+    );
+
+    const usersAwaitingSubmissionCount = game.numUsers - 1;
+    if (
+      allCurrentRoundActionsResponse.rowCount === usersAwaitingSubmissionCount
+    ) {
+      // TODO: publish new round response
+      await pool.query(
+        'UPDATE "rounds" SET "gameStage" = $1 WHERE "id" = $2 RETURNING *',
+        [3, game.currentRoundId]
+      );
+    }
+
+    res.json(updateUserRoundActionsResponse.rows[0]);
   } catch (error) {
     console.error(error);
     next(error);
   }
 });
 
-// TODO: wait for everyone to hit next, determine if game is done
+// TODO: wait for everyone to hit next, determine if game is done, set new active user, create new round
 router.post("/:gameKey?/ready", async (req, res, next) => {
   try {
+    const userId = req.headers.user;
+    const gameKey = req.params?.gameKey;
+
+    if (!userId) throw new Error("user id and card num is required");
+
+    const game = getGameFromGameKey(gameKey);
+
+    const updateUserRoundActionsResponse = await pool.query(
+      'UPDATE "userRoundActions" SET "readyToProceed" = $1 WHERE "roundId" = $2 AND "userId" = $3 RETURNING *',
+      [true, game.currentRoundId, userId]
+    );
+
+    const allCurrentRoundActionsResponse = await pool.query(
+      'SELECT * from "userRoundActions" WHERE "roundId" = $1 AND "submittedCardNum" IS NOT NULL',
+      [game.currentRoundId]
+    );
+
+    const usersAwaitingSubmissionCount = game.numUsers - 1;
+    if (
+      allCurrentRoundActionsResponse.rowCount === usersAwaitingSubmissionCount
+    ) {
+      // TODO: publish new round response
+      await pool.query(
+        'UPDATE "rounds" SET "gameStage" = $1 WHERE "id" = $2 RETURNING *',
+        [3, game.currentRoundId]
+      );
+    }
   } catch (error) {
     console.error(error);
     next(error);
