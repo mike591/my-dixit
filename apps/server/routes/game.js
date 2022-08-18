@@ -257,7 +257,89 @@ router.get("/:gameKey?/choices", async (req, res, next) => {
   }
 });
 
-router.post("/:gameKey?/submit-guess", async (req, res, next) => {
+const assignPoints = async (game) => {
+  const currentRoundResponse = await pool.query(
+    'SELECT * from "rounds" WHERE "id" = $1',
+    [game.currentRoundId]
+  );
+
+  const gameUsers = getGameFromGameKey(game.gameKey);
+
+  const allUserRoundActionsResponse = await pool.query(
+    'SELECT * from "userRoundActions" WHERE "roundId" = $1',
+    [game.currentRoundId]
+  );
+
+  const currentRound = currentRoundResponse.rows[0];
+  const cardVotes = {};
+  allUserRoundActionsResponse.forEach((userAction) => {
+    cardVotes[userAction.guessedCardNum] =
+      cardVotes[userAction.guessedCardNum] ?? 0;
+    cardVotes[userAction.guessedCardNum]++;
+  });
+
+  const noUserGuessedCorrect = !cardVotes[currentRound.currentCardNum];
+  const allUserGuessedCorrect =
+    cardVotes[currentRound.currentCardNum] === game.numUsers - 1;
+  if (noUserGuessedCorrect || allUserGuessedCorrect) {
+    await Promise.all(
+      gameUsers.map(async (gameUser) => {
+        const isActiveUser = gameUser.userId === currentRound.activeUserId;
+        if (isActiveUser) {
+          return await pool.query(
+            'UPDATE "gameUsers" SET "pointsGained" = $1 WHERE "gameId" = $2 AND "userId" = $3',
+            [0, game.id, gameUser.userId]
+          );
+        } else {
+          const userAction = allUserRoundActionsResponse.find(
+            (user) => user.userId === gameUser.userId
+          );
+          const pointsToAdd = 2 + (cardVotes[userAction.submittedCardNum] || 0);
+          return await pool.query(
+            'UPDATE "gameUsers" SET "points" = $1, "pointsGained" = $2 WHERE "gameId" = $3 AND "userId" = $4',
+            [
+              gameUser.points + pointsToAdd,
+              pointsToAdd,
+              game.id,
+              gameUser.userId,
+            ]
+          );
+        }
+      })
+    );
+  } else {
+    await Promise.all(
+      gameUsers.map(async (gameUser) => {
+        const isActiveUser = gameUser.userId === currentRound.activeUserId;
+        if (isActiveUser) {
+          return await pool.query(
+            'UPDATE "gameUsers" SET "points" = $1, "pointsGained" = $2 WHERE "gameId" = $3 AND "userId" = $4',
+            [gameUser.points + 3, 3, game.id, gameUser.userId]
+          );
+        } else {
+          const userAction = allUserRoundActionsResponse.find(
+            (user) => user.userId === gameUser.userId
+          );
+          const pointsToAdd =
+            (userAction.submittedCardNum === currentRound.currentCardNum
+              ? 3
+              : 0) + (cardVotes[userAction.submittedCardNum] || 0);
+
+          return await pool.query(
+            'UPDATE "gameUsers" SET "points" = $1, "pointsGained" = $2 WHERE "gameId" = $3 AND "userId" = $4',
+            [
+              gameUser.points + pointsToAdd,
+              pointsToAdd,
+              game.id,
+              gameUser.userId,
+            ]
+          );
+        }
+      })
+    );
+  }
+};
+router.post("/:gameKey?/guess", async (req, res, next) => {
   try {
     const userId = req.headers.user;
     const gameKey = req.params?.gameKey;
@@ -269,19 +351,20 @@ router.post("/:gameKey?/submit-guess", async (req, res, next) => {
     const game = getGameFromGameKey(gameKey);
 
     const updateUserRoundActionsResponse = await pool.query(
-      'UPDATE "userRoundActions" SET "submittedCardNum" = $1 WHERE "roundId" = $2 AND "userId" = $3 RETURNING *',
+      'UPDATE "userRoundActions" SET "guessedCardNum" = $1 WHERE "roundId" = $2 AND "userId" = $3 RETURNING *',
       [cardNum, game.currentRoundId, userId]
     );
 
     const allCurrentRoundActionsResponse = await pool.query(
-      'SELECT * from "userRoundActions" WHERE "roundId" = $1 AND "submittedCardNum" IS NOT NULL',
+      'SELECT * from "userRoundActions" WHERE "roundId" = $1 AND "guessedCardNum" IS NOT NULL',
       [game.currentRoundId]
     );
 
     const usersAwaitingSubmissionCount = game.numUsers - 1;
-    if (
-      allCurrentRoundActionsResponse.rowCount === usersAwaitingSubmissionCount
-    ) {
+    const readyToProceed =
+      allCurrentRoundActionsResponse.rowCount === usersAwaitingSubmissionCount;
+    if (readyToProceed) {
+      await assignPoints(game);
       // TODO: publish new round response
       await pool.query(
         'UPDATE "rounds" SET "gameStage" = $1 WHERE "id" = $2 RETURNING *',
@@ -295,6 +378,19 @@ router.post("/:gameKey?/submit-guess", async (req, res, next) => {
     next(error);
   }
 });
+
+const checkIfGameEnd = async (game) => {};
+
+const updateUserHands = async (game) => {};
+
+const handleNextRound = async (game) => {
+  // const newRoundId = uuidv4();
+  // const newRoundResponse = await pool.query(
+  //   'INSERT INTO rounds (id, "activeUserId", "roundNum") VALUES ($1, $2, $3) RETURNING *',
+  //   [newRoundId, shuffledGameUsers[0].userId, 0]
+  // );
+  // const currentRoundId = newRoundResponse.rows[0]?.id;
+};
 
 // TODO: wait for everyone to hit next, determine if game is done, set new active user, create new round
 router.post("/:gameKey?/ready", async (req, res, next) => {
@@ -312,20 +408,28 @@ router.post("/:gameKey?/ready", async (req, res, next) => {
     );
 
     const allCurrentRoundActionsResponse = await pool.query(
-      'SELECT * from "userRoundActions" WHERE "roundId" = $1 AND "submittedCardNum" IS NOT NULL',
-      [game.currentRoundId]
+      'SELECT * from "userRoundActions" WHERE "roundId" = $1 AND "readyToProceed" = $2',
+      [game.currentRoundId, true]
     );
 
     const usersAwaitingSubmissionCount = game.numUsers - 1;
-    if (
-      allCurrentRoundActionsResponse.rowCount === usersAwaitingSubmissionCount
-    ) {
-      // TODO: publish new round response
-      await pool.query(
-        'UPDATE "rounds" SET "gameStage" = $1 WHERE "id" = $2 RETURNING *',
-        [3, game.currentRoundId]
-      );
+    const readyToProceed =
+      allCurrentRoundActionsResponse.rowCount === usersAwaitingSubmissionCount;
+    if (readyToProceed) {
+      const isGameEnd = await checkIfGameEnd(game);
+      if (isGameEnd) {
+        // TODO: end the game
+      } else {
+        await updateUserHands(game);
+        await handleNextRound(game);
+      }
+
+      const gameUsers = getAllUsersInGame(gameKey);
+
+      // TODO: pass out cards, update deck and discard, reshuffle when needed
     }
+
+    res.json(updateUserRoundActionsResponse.rows[0]);
   } catch (error) {
     console.error(error);
     next(error);
