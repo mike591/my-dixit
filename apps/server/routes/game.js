@@ -127,7 +127,7 @@ router.post("/:gameKey?/start", async (req, res, next) => {
     if (!gameId) throw new Error("Game ID is not valid");
 
     const deck = generateDeck();
-    let gameUsers = await getAllUsersInGame(gameId);
+    const gameUsers = await getAllUsersInGame(gameId);
     const shuffledGameUsers = shuffle(gameUsers);
 
     await Promise.all(
@@ -379,7 +379,18 @@ router.post("/:gameKey?/guess", async (req, res, next) => {
   }
 });
 
-const checkIfGameEnd = async (game) => {};
+const getGameWinner = async (game) => {
+  // TODO: handle multiple game modes
+  const gameUsers = await getAllUsersInGame(game.id);
+  let gameWinner = null;
+
+  gameUsers.forEach((gameUser) => {
+    if (gameUser.points >= game.numPoints) {
+      gameWinner = gameUser;
+    }
+  });
+  return gameWinner;
+};
 
 const updateUserHands = async (game) => {};
 
@@ -416,9 +427,12 @@ router.post("/:gameKey?/ready", async (req, res, next) => {
     const readyToProceed =
       allCurrentRoundActionsResponse.rowCount === usersAwaitingSubmissionCount;
     if (readyToProceed) {
-      const isGameEnd = await checkIfGameEnd(game);
-      if (isGameEnd) {
-        // TODO: end the game
+      const gameWinner = await getGameWinner(game);
+      if (gameWinner) {
+        await pool.query(
+          'UPDATE games SET "isGameEnd" = $1 WHERE "id" = $2 RETURNING *',
+          [true, game.id]
+        );
       } else {
         await updateUserHands(game);
         await handleNextRound(game);
