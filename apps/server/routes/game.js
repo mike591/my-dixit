@@ -392,7 +392,45 @@ const getGameWinner = async (game) => {
   return gameWinner;
 };
 
-const updateUserHands = async (game) => {};
+const updateUserHands = async (game) => {
+  const gameUsers = await getAllUsersInGame(game.id);
+  const allCurrentRoundActionsResponse = await pool.query(
+    'SELECT * from "userRoundActions" WHERE "roundId" = $1',
+    [game.currentRoundId]
+  );
+
+  let deck = game.deck;
+  let discardPile = game.discardPile;
+  allCurrentRoundActionsResponse.rows.forEach((action) => {
+    if (action.submittedCardNum !== undefined) {
+      discardPile.push(action.submittedCardNum);
+    }
+  });
+
+  if (deck.length < game.numUsers) {
+    deck = [...deck, ...shuffle(discardPile)];
+    discardPile = [];
+  }
+
+  await Promise.all(
+    gameUsers.map(async (gameUser, idx) => {
+      const hand = gameUser.hand;
+      for (let i = 0; i < 6; i++) {
+        hand.push(deck.shift());
+      }
+
+      return await pool.query(
+        'UPDATE "gameUsers" SET "hand" = $1, "order" = $2 WHERE "id" = $3 RETURNING *',
+        [hand, idx, gameUser.id]
+      );
+    })
+  );
+
+  await pool.query(
+    'UPDATE "game" SET "deck" = $1, "discardPile" = $2 WHERE "id" = $3 RETURNING *',
+    [deck, discardPile, game.id]
+  );
+};
 
 const handleNextRound = async (game) => {
   // const newRoundId = uuidv4();
@@ -437,8 +475,6 @@ router.post("/:gameKey?/ready", async (req, res, next) => {
         await updateUserHands(game);
         await handleNextRound(game);
       }
-
-      const gameUsers = getAllUsersInGame(gameKey);
 
       // TODO: pass out cards, update deck and discard, reshuffle when needed
     }
