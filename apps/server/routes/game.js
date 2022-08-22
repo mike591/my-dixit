@@ -433,12 +433,32 @@ const updateUserHands = async (game) => {
 };
 
 const handleNextRound = async (game) => {
-  // const newRoundId = uuidv4();
-  // const newRoundResponse = await pool.query(
-  //   'INSERT INTO rounds (id, "activeUserId", "roundNum") VALUES ($1, $2, $3) RETURNING *',
-  //   [newRoundId, shuffledGameUsers[0].userId, 0]
-  // );
-  // const currentRoundId = newRoundResponse.rows[0]?.id;
+  const currentRoundResponse = await pool.query(
+    'SELECT * from "rounds" WHERE "id" = $1',
+    [game.currentRoundId]
+  );
+  const activeUserId = currentRoundResponse.rows[0].activeUserId;
+  const gameUsers = await getAllUsersInGame(game);
+
+  const activeUser = gameUsers.find((gameUser) => {
+    gameUser.userId = activeUserId;
+  });
+
+  const newActiveUserOrder = (activeUser.order + 1) % game.numUsers;
+  const newActiveUser = gameUsers.find(
+    (gameUser) => gameUser.order === newActiveUserOrder
+  );
+
+  const newRoundId = uuidv4();
+  const newRoundResponse = await pool.query(
+    'INSERT INTO rounds (id, "activeUserId", "roundNum") VALUES ($1, $2, $3) RETURNING *',
+    [newRoundId, newActiveUser.userId, 0]
+  );
+  const currentRoundId = newRoundResponse.rows[0]?.id;
+  await pool.query(
+    'UPDATE "game" SET "currentRoundId" = $1 WHERE "id" = $2 RETURNING *',
+    [currentRoundId, game.id]
+  );
 };
 
 // TODO: wait for everyone to hit next, determine if game is done, set new active user, create new round
@@ -471,12 +491,11 @@ router.post("/:gameKey?/ready", async (req, res, next) => {
           'UPDATE games SET "isGameEnd" = $1 WHERE "id" = $2 RETURNING *',
           [true, game.id]
         );
+        // TODO: return the winner?
       } else {
         await updateUserHands(game);
         await handleNextRound(game);
       }
-
-      // TODO: pass out cards, update deck and discard, reshuffle when needed
     }
 
     res.json(updateUserRoundActionsResponse.rows[0]);
