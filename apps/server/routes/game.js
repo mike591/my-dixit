@@ -5,6 +5,18 @@ const pool = require("server/db");
 
 // TODO: how to better handle server crashing on errors?
 
+const handleSocketSetup = (wss) => {
+  wss.once("connection", function connection(ws, req) {
+    const gameKey = req.params?.gameKey;
+    ws.gameKey = gameKey;
+  });
+};
+
+// TODO: setup publish
+const handlePublish = (clients, game) => {
+  console.log({ clients });
+};
+
 const getGameFromGameKey = async (gameKey) => {
   const gameResponse = await pool.query(
     `SELECT * FROM "games" WHERE "gameKey" = $1`,
@@ -74,6 +86,10 @@ router.get("/:gameKey?", async (req, res, next) => {
         [newGameUsersId, gameId, userId, true]
       );
     }
+
+    // TODO: double check that the sockets are working
+    handleSocketSetup(req.app.wss);
+    handlePublish(req.app.locals.clients, game);
 
     // TODO: set up websocket subscriptions to game and gameUser
 

@@ -8,12 +8,12 @@ var app = require("../app");
 var debug = require("debug")("server:server");
 var http = require("http");
 var { WebSocketServer } = require("ws");
-var initializeWebSockets = require("./websocket");
 
 /**
  * Get port from environment and store in Express.
  */
 
+// eslint-disable-next-line no-undef
 var port = normalizePort(process.env.PORT || "3001");
 app.set("port", port);
 
@@ -28,7 +28,10 @@ var server = http.createServer(app);
  */
 
 const wss = new WebSocketServer({ server });
-initializeWebSockets(wss);
+app.use(function (req, res, next) {
+  req.wss = wss;
+  return next();
+});
 
 /**
  * Listen on provided port, on all network interfaces.
@@ -73,10 +76,12 @@ function onError(error) {
   switch (error.code) {
     case "EACCES":
       console.error(bind + " requires elevated privileges");
+      // eslint-disable-next-line no-undef
       process.exit(1);
       break;
     case "EADDRINUSE":
       console.error(bind + " is already in use");
+      // eslint-disable-next-line no-undef
       process.exit(1);
       break;
     default:
