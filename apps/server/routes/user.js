@@ -6,8 +6,17 @@ const pool = require("server/db");
 
 // get user
 router.get("/:id?", async (req, res, next) => {
-  console.log(req.params);
-  res.send({ data: "TODO: USER" });
+  try {
+    const id = req.params?.id;
+    const response = await pool.query('SELECT * from "users" WHERE id = $1', [
+      id,
+    ]);
+
+    res.json(response.rows[0]);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
 });
 
 // create user
@@ -18,7 +27,7 @@ router.post("/", async (req, res, next) => {
     const animal = faker.animal[animalType]();
 
     const response = await pool.query(
-      "INSERT INTO users (id, name) VALUES ($1, $2) RETURNING *",
+      'INSERT INTO "users" (id, name) VALUES ($1, $2) RETURNING *',
       [newId, animal]
     );
 
@@ -39,7 +48,7 @@ router.put("/:id?", async (req, res, next) => {
     }
 
     const response = await pool.query(
-      "UPDATE users SET name=$1 WHERE id=$2 RETURNING *",
+      'UPDATE "users" SET name=$1 WHERE id=$2 RETURNING *',
       [name, id]
     );
 
