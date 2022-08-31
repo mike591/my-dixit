@@ -5,29 +5,29 @@ const pool = require("server/db");
 
 // TODO: how to better handle server crashing on errors?
 
-const handleSocketSetup = (wss) => {
+function handleSocketSetup(wss) {
   wss.once("connection", function connection(ws, req) {
     const gameKey = req.params?.gameKey;
     ws.gameKey = gameKey;
   });
-};
+}
 
 // TODO: setup publish
-const handlePublish = (clients, game) => {
+function handlePublish(clients, game) {
   console.log({ clients });
-};
+}
 
-const getGameFromGameKey = async (gameKey) => {
+async function getGameFromGameKey(gameKey) {
   const gameResponse = await pool.query(
     `SELECT * FROM "games" WHERE "gameKey" = $1`,
     [gameKey]
   );
 
   return gameResponse.rows[0];
-};
+}
 
 const CARD_TOTAL = 108;
-const shuffle = (cards = []) => {
+function shuffle(cards = []) {
   const array = [...cards];
 
   let currentIndex = array.length,
@@ -44,24 +44,24 @@ const shuffle = (cards = []) => {
   }
 
   return array;
-};
+}
 
-const generateDeck = () => {
+function generateDeck() {
   const cards = [];
   for (let i = 0; i < CARD_TOTAL; i++) {
     cards.push(i);
   }
   return shuffle(cards);
-};
+}
 
-const getAllUsersInGame = async (gameId) => {
+async function getAllUsersInGame(gameId) {
   const usersResponse = await pool.query(
     `SELECT * FROM "gameUsers" WHERE "gameId" = $1`,
     [gameId]
   );
 
   return usersResponse.rows;
-};
+}
 
 /* GET and join game */
 router.get("/:gameKey?", async (req, res, next) => {
@@ -273,7 +273,7 @@ router.get("/:gameKey?/choices", async (req, res, next) => {
   }
 });
 
-const assignPoints = async (game) => {
+async function assignPoints(game) {
   const currentRoundResponse = await pool.query(
     'SELECT * from "rounds" WHERE "id" = $1',
     [game.currentRoundId]
@@ -354,7 +354,8 @@ const assignPoints = async (game) => {
       })
     );
   }
-};
+}
+
 router.post("/:gameKey?/guess", async (req, res, next) => {
   try {
     const userId = req.headers.user;
@@ -395,7 +396,7 @@ router.post("/:gameKey?/guess", async (req, res, next) => {
   }
 });
 
-const getGameWinner = async (game) => {
+async function getGameWinner(game) {
   // TODO: handle multiple game modes
   const gameUsers = await getAllUsersInGame(game.id);
   let gameWinner = null;
@@ -406,9 +407,9 @@ const getGameWinner = async (game) => {
     }
   });
   return gameWinner;
-};
+}
 
-const updateUserHands = async (game) => {
+async function updateUserHands(game) {
   const gameUsers = await getAllUsersInGame(game.id);
   const allCurrentRoundActionsResponse = await pool.query(
     'SELECT * from "userRoundActions" WHERE "roundId" = $1',
@@ -446,9 +447,9 @@ const updateUserHands = async (game) => {
     'UPDATE "game" SET "deck" = $1, "discardPile" = $2 WHERE "id" = $3 RETURNING *',
     [deck, discardPile, game.id]
   );
-};
+}
 
-const handleNextRound = async (game) => {
+async function handleNextRound(game) {
   const currentRoundResponse = await pool.query(
     'SELECT * from "rounds" WHERE "id" = $1',
     [game.currentRoundId]
@@ -475,7 +476,7 @@ const handleNextRound = async (game) => {
     'UPDATE "game" SET "currentRoundId" = $1 WHERE "id" = $2 RETURNING *',
     [currentRoundId, game.id]
   );
-};
+}
 
 // TODO: wait for everyone to hit next, determine if game is done, set new active user, create new round
 router.post("/:gameKey?/ready", async (req, res, next) => {
