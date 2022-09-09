@@ -83,7 +83,7 @@ router.get("/:gameKey?", async (req, res, next) => {
       const newGameUsersId = uuidv4();
       await pool.query(
         'INSERT INTO "gameUsers" (id, "gameId", "userId", "isAdmin") VALUES ($1, $2, $3, $4) RETURNING *',
-        [newGameUsersId, gameId, userId, true]
+        [newGameUsersId, gameId, userId, false]
       );
     }
 
