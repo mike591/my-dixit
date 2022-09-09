@@ -56,16 +56,27 @@ const useGame = create<GameState>()(
   )
 );
 
-export default function () {
-  const { game, user, users, round } = useGame(
+export default function (gameKey: string) {
+  const { game, user, users, round, setState } = useGame(
     (state) => ({
       game: state.game,
       user: state.user,
       users: state.users,
       round: state.round,
+      setState: state.setState,
     }),
     shallow
   );
+
+  // TODO: get server url from env
+  const socket = new WebSocket(
+    `ws://${process.env.REACT_APP_API_DOMAIN}/game/${gameKey}`
+  );
+
+  // Listen for messages
+  socket.addEventListener("message", (event) => {
+    console.log("Message from server ", event.data);
+  });
 
   return {
     game,
