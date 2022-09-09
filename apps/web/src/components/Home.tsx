@@ -1,4 +1,4 @@
-import { Button, Divider, Input } from "antd";
+import { Button, Divider, Input, Spin } from "antd";
 
 import Logo from "assets/Logo";
 import axios from "axios";
@@ -13,7 +13,17 @@ const Home: React.FC = () => {
   };
 
   const handleCreateGame = async () => {
-    console.log("Creating game");
+    setLoading(true);
+    const url = `http://${process.env.REACT_APP_API_DOMAIN}/game`;
+    const response = await axios({
+      method: "POST",
+      url,
+      headers: {
+        // user:
+      },
+    });
+    console.log({ response });
+    setLoading(false);
   };
 
   const handleUpdateGameKey = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -21,23 +31,25 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col items-center gap-4">
-      <Logo className="mt-12 mb-4" />
-      <Button type="primary" onClick={handleCreateGame}>
-        New Game
-      </Button>
-      <Divider />
-      <div className="flex flex-col gap-2">
-        <Input
-          placeholder="Game key"
-          onChange={handleUpdateGameKey}
-          value={gameKey}
-        />
-        <Button type="primary" onClick={handleJoinGame}>
-          Join Game
+    <Spin spinning={loading}>
+      <div className="h-full flex flex-col items-center gap-4">
+        <Logo className="mt-12 mb-4" />
+        <Button type="primary" onClick={handleCreateGame}>
+          New Game
         </Button>
+        <Divider />
+        <div className="flex flex-col gap-2">
+          <Input
+            placeholder="Game key"
+            onChange={handleUpdateGameKey}
+            value={gameKey}
+          />
+          <Button type="primary" onClick={handleJoinGame}>
+            Join Game
+          </Button>
+        </div>
       </div>
-    </div>
+    </Spin>
   );
 };
 

@@ -41,7 +41,7 @@ interface GameState {
   }) => void;
 }
 
-const useGame = create<GameState>()(
+const useGameStore = create<GameState>()(
   devtools(
     persist(
       (set) => ({
@@ -57,7 +57,7 @@ const useGame = create<GameState>()(
 );
 
 export default function (gameKey: string) {
-  const { game, user, users, round, setState } = useGame(
+  const { game, user, users, round, setState } = useGameStore(
     (state) => ({
       game: state.game,
       user: state.user,
