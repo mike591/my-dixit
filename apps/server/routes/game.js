@@ -67,7 +67,7 @@ async function getAllUsersInGame(gameId) {
 router.get("/:gameKey?", async (req, res, next) => {
   try {
     const gameKey = req.params?.gameKey;
-    const userId = req.headers.user;
+    const userId = req.headers.user_id;
 
     if (!userId || !gameKey) throw new Error("user id or game id is missing");
 
@@ -105,7 +105,7 @@ router.get("/:gameKey?", async (req, res, next) => {
 // CREATE game
 router.post("/", async (req, res, next) => {
   try {
-    const userId = req.headers.user;
+    const userId = req.headers.user_id;
 
     if (!userId) throw new Error("user id is missing");
 
@@ -218,7 +218,7 @@ router.post("/:gameKey?/init-round", async (req, res, next) => {
 
 router.post("/:gameKey?/submit-card", async (req, res, next) => {
   try {
-    const userId = req.headers.user;
+    const userId = req.headers.user_id;
     const gameKey = req.params?.gameKey;
     const { cardNum } = req.body;
 
@@ -358,7 +358,7 @@ async function assignPoints(game) {
 
 router.post("/:gameKey?/guess", async (req, res, next) => {
   try {
-    const userId = req.headers.user;
+    const userId = req.headers.user_id;
     const gameKey = req.params?.gameKey;
     const { cardNum } = req.body;
 
@@ -481,7 +481,7 @@ async function handleNextRound(game) {
 // TODO: wait for everyone to hit next, determine if game is done, set new active user, create new round
 router.post("/:gameKey?/ready", async (req, res, next) => {
   try {
-    const userId = req.headers.user;
+    const userId = req.headers.user_id;
     const gameKey = req.params?.gameKey;
 
     if (!userId) throw new Error("user id and card num is required");

@@ -1,29 +1,47 @@
 import { Button, Divider, Input, Spin } from "antd";
+import { useCallback, useState } from "react";
 
 import Logo from "assets/Logo";
 import axios from "axios";
-import { useState } from "react";
+import useUser from "hooks/useUser";
+
+const useCreateGame = () => {
+  const [loading, setLoading] = useState(false);
+  const { id } = useUser();
+
+  const createGame = useCallback(
+    async function () {
+      setLoading(true);
+      const url = `http://${process.env.REACT_APP_API_DOMAIN}/game`;
+      const response = await axios({
+        method: "POST",
+        url,
+        headers: {
+          user_id: id,
+        },
+      });
+      console.log({ response });
+      setLoading(false);
+    },
+    [id]
+  );
+
+  return {
+    loading,
+    createGame,
+  };
+};
 
 const Home: React.FC = () => {
   const [gameKey, setGameKey] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { loading, createGame } = useCreateGame();
 
   const handleJoinGame = async () => {
     console.log("Joining game", gameKey);
   };
 
   const handleCreateGame = async () => {
-    setLoading(true);
-    const url = `http://${process.env.REACT_APP_API_DOMAIN}/game`;
-    const response = await axios({
-      method: "POST",
-      url,
-      headers: {
-        // user:
-      },
-    });
-    console.log({ response });
-    setLoading(false);
+    await createGame();
   };
 
   const handleUpdateGameKey = (e: React.ChangeEvent<HTMLInputElement>) => {
