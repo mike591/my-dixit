@@ -28,10 +28,7 @@ var server = http.createServer(app);
  */
 
 const wss = new WebSocketServer({ server });
-app.use(function (req, res, next) {
-  req.wss = wss;
-  return next();
-});
+app.set("wss", wss);
 
 /**
  * Listen on provided port, on all network interfaces.

@@ -1,5 +1,7 @@
 import { devtools, persist } from "zustand/middleware";
+import { useEffect, useRef } from "react";
 
+import axios from "axios";
 import create from "zustand";
 import shallow from "zustand/shallow";
 
@@ -56,7 +58,11 @@ const useGameStore = create<GameState>()(
   )
 );
 
-export default function (gameKey: string) {
+interface UseGame {
+  gameKey: string;
+  userId: string;
+}
+export default function ({ gameKey, userId }: UseGame) {
   const { game, user, users, round, setState } = useGameStore(
     (state) => ({
       game: state.game,
@@ -68,15 +74,45 @@ export default function (gameKey: string) {
     shallow
   );
 
-  // TODO: get server url from env
-  const socket = new WebSocket(
-    `ws://${process.env.REACT_APP_API_DOMAIN}/game/${gameKey}`
-  );
+  // handle sockets
+  const currentSocketRef = useRef<WebSocket | null>(null);
+  useEffect(() => {
+    if (gameKey) {
+      const socket = new WebSocket(
+        `ws://${process.env.REACT_APP_API_DOMAIN}/game/${gameKey}`
+      );
 
-  // Listen for messages
-  socket.addEventListener("message", (event) => {
-    console.log("Message from server ", event.data);
-  });
+      // Listen for messages
+      socket.addEventListener("message", (event) => {
+        // TODO: save data to state
+        console.log("Message from server ", event.data);
+      });
+
+      currentSocketRef.current = socket;
+    }
+
+    return () => {
+      const socketIsOpen = currentSocketRef.current?.readyState === 1;
+      if (socketIsOpen) {
+        currentSocketRef.current?.close();
+        currentSocketRef.current = null;
+      }
+    };
+  }, [gameKey]);
+
+  useEffect(() => {
+    if (!gameKey) {
+      return;
+    }
+
+    const gameResponse = axios({
+      method: "GET",
+      url: `http://${process.env.REACT_APP_API_DOMAIN}/game/${gameKey}`,
+      headers: {
+        user_id: userId,
+      },
+    });
+  }, [gameKey]);
 
   return {
     game,

@@ -5,16 +5,20 @@ const pool = require("server/db");
 
 // TODO: how to better handle server crashing on errors?
 
-function handleSocketSetup(wss) {
-  wss.once("connection", function connection(ws, req) {
-    const gameKey = req.params?.gameKey;
+const gameClients = {};
+function handleSocketSetup({ wss, gameKey, userId }) {
+  wss.on("connection", function connection(ws) {
     ws.gameKey = gameKey;
+    gameClients[gameKey] = gameClients[gameKey] ?? {};
+    gameClients[gameKey][userId] = ws;
   });
 }
 
-// TODO: setup publish
-function handlePublish(clients, game) {
-  console.log({ clients });
+function handlePublish({ wss, gameKey }) {
+  const clients = Object.values(gameClients[gameKey] || {});
+  clients.forEach(function each(client) {
+    client.send("hi");
+  });
 }
 
 async function getGameFromGameKey(gameKey) {
@@ -87,9 +91,9 @@ router.get("/:gameKey?", async (req, res, next) => {
       );
     }
 
-    // TODO: double check that the sockets are working
-    handleSocketSetup(req.app.wss);
-    handlePublish(req.app.locals.clients, game);
+    const wss = req.app.get("wss");
+    handleSocketSetup({ wss, gameKey });
+    handlePublish({ wss, gameKey });
 
     // TODO: set up websocket subscriptions to game and gameUser
 
@@ -122,7 +126,12 @@ router.post("/", async (req, res, next) => {
       [newGameUsersId, newGameId, userId, true]
     );
 
-    res.json(newGameResponse.rows[0]);
+    const game = newGameResponse.rows[0];
+
+    const wss = req.app.get("wss");
+    handleSocketSetup({ wss, gameKey });
+
+    res.json(game);
   } catch (error) {
     console.error(error);
     next(error);
