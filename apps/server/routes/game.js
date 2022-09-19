@@ -117,15 +117,12 @@ router.post("/", async (req, res, next) => {
     );
 
     const newGameUsersId = uuidv4();
-    const newUserResponse = await pool.query(
+    await pool.query(
       'INSERT INTO "gameUsers" (id, "gameId", "userId", "isAdmin") VALUES ($1, $2, $3, $4) RETURNING *',
       [newGameUsersId, newGameId, userId, true]
     );
 
-    res.json({
-      game: newGameResponse.rows[0],
-      gameUser: newUserResponse.rows[0],
-    });
+    res.json(newGameResponse.rows[0]);
   } catch (error) {
     console.error(error);
     next(error);
