@@ -14,13 +14,6 @@ function handleSocketSetup({ wss, gameKey, userId }) {
   });
 }
 
-function handlePublish({ wss, gameKey }) {
-  const clients = Object.values(gameClients[gameKey] || {});
-  clients.forEach(function each(client) {
-    client.send("hi");
-  });
-}
-
 async function getGameFromGameKey(gameKey) {
   const gameResponse = await pool.query(
     `SELECT * FROM "games" WHERE "gameKey" = $1`,
@@ -67,6 +60,57 @@ async function getAllUsersInGame(gameId) {
   return usersResponse.rows;
 }
 
+async function getAllCurrentRoundActions(currentRoundId) {
+  const response = await pool.query(
+    'SELECT * from "userRoundActions" WHERE "roundId" = $1',
+    [currentRoundId]
+  );
+  return response.rows;
+}
+
+/*
+  game?: {
+    id: string;
+    gameKey: string;
+    isStarted: boolean;
+    isGameEnd: boolean;
+  };
+  user?: {
+    submittedCardNum: number;
+    selectedCardNum: number;
+    isAdmin: boolean;
+    hand: number[];
+  };
+  users?: {
+    [key: string]: {
+      name: string;
+      points: number;
+      pointsGained: number;
+      readyToProceed: boolean; // for round end
+    };
+  };
+  round?: {
+    activeUserId: string;
+    currentPrompt: string;
+  };
+*/
+
+// TODO: pull out relevant game data into above format
+async function handlePublish(gameKey) {
+  const game = await getGameFromGameKey(gameKey);
+  const gameUsers = await getAllUsersInGame(game.id);
+  const allCurrentRoundActions = await getAllCurrentRoundActions(
+    game.currentRoundId
+  );
+
+  const message = JSON.stringify({ game, gameUsers, allCurrentRoundActions });
+
+  const clients = Object.values(gameClients[gameKey] || {});
+  clients.forEach(function each(client) {
+    client.send(message);
+  });
+}
+
 /* GET and join game */
 router.get("/:gameKey?", async (req, res, next) => {
   try {
@@ -93,7 +137,7 @@ router.get("/:gameKey?", async (req, res, next) => {
 
     const wss = req.app.get("wss");
     handleSocketSetup({ wss, gameKey });
-    handlePublish({ wss, gameKey });
+    await handlePublish(gameKey);
 
     // TODO: set up websocket subscriptions to game and gameUser
 
@@ -239,15 +283,12 @@ router.post("/:gameKey?/submit-card", async (req, res, next) => {
       [newUserRoundActionId, userId, game.currentRoundId, cardNum]
     );
 
-    const allCurrentRoundActionsResponse = await pool.query(
-      'SELECT * from "userRoundActions" WHERE "roundId" = $1',
-      [game.currentRoundId]
+    const allCurrentRoundActions = await getAllCurrentRoundActions(
+      game.currentRoundId
     );
 
     const usersAwaitingSubmissionCount = game.numUsers;
-    if (
-      allCurrentRoundActionsResponse.rowCount === usersAwaitingSubmissionCount
-    ) {
+    if (allCurrentRoundActions.length === usersAwaitingSubmissionCount) {
       // TODO: publish new round response
       await pool.query(
         'UPDATE "rounds" SET "gameStage" = $1 WHERE "id" = $2 RETURNING *',
@@ -267,12 +308,11 @@ router.get("/:gameKey?/choices", async (req, res, next) => {
     const gameKey = req.params?.gameKey;
 
     const game = getGameFromGameKey(gameKey);
-    const allCurrentRoundActionsResponse = await pool.query(
-      'SELECT * from "userRoundActions" WHERE "roundId" = $1',
-      [game.currentRoundId]
+    const allCurrentRoundActions = await getAllCurrentRoundActions(
+      game.currentRoundId
     );
 
-    return res.json(allCurrentRoundActionsResponse.rows);
+    return res.json(allCurrentRoundActions);
   } catch (error) {
     console.error(error);
     next(error);
@@ -287,14 +327,13 @@ async function assignPoints(game) {
 
   const gameUsers = getGameFromGameKey(game.gameKey);
 
-  const allUserRoundActionsResponse = await pool.query(
-    'SELECT * from "userRoundActions" WHERE "roundId" = $1',
-    [game.currentRoundId]
+  const allCurrentRoundActions = await getAllCurrentRoundActions(
+    game.currentRoundId
   );
 
   const currentRound = currentRoundResponse.rows[0];
   const cardVotes = {};
-  allUserRoundActionsResponse.forEach((userAction) => {
+  allCurrentRoundActions.forEach((userAction) => {
     cardVotes[userAction.guessedCardNum] =
       cardVotes[userAction.guessedCardNum] ?? 0;
     cardVotes[userAction.guessedCardNum]++;
@@ -313,7 +352,7 @@ async function assignPoints(game) {
             [0, game.id, gameUser.userId]
           );
         } else {
-          const userAction = allUserRoundActionsResponse.find(
+          const userAction = allCurrentRoundActions.find(
             (user) => user.userId === gameUser.userId
           );
           const pointsToAdd = 2 + (cardVotes[userAction.submittedCardNum] || 0);
@@ -339,7 +378,7 @@ async function assignPoints(game) {
             [gameUser.points + 3, 3, game.id, gameUser.userId]
           );
         } else {
-          const userAction = allUserRoundActionsResponse.find(
+          const userAction = allCurrentRoundActions.find(
             (user) => user.userId === gameUser.userId
           );
           const pointsToAdd =
@@ -417,14 +456,13 @@ async function getGameWinner(game) {
 
 async function updateUserHands(game) {
   const gameUsers = await getAllUsersInGame(game.id);
-  const allCurrentRoundActionsResponse = await pool.query(
-    'SELECT * from "userRoundActions" WHERE "roundId" = $1',
-    [game.currentRoundId]
+  const allCurrentRoundActions = await getAllCurrentRoundActions(
+    game.currentRoundId
   );
 
   let deck = game.deck;
   let discardPile = game.discardPile;
-  allCurrentRoundActionsResponse.rows.forEach((action) => {
+  allCurrentRoundActions.forEach((action) => {
     if (action.submittedCardNum !== undefined) {
       discardPile.push(action.submittedCardNum);
     }

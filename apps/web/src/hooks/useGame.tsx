@@ -84,8 +84,9 @@ export default function ({ gameKey, userId }: UseGame) {
 
       // Listen for messages
       socket.addEventListener("message", (event) => {
-        // TODO: save data to state
-        console.log("Message from server ", event.data);
+        const data = JSON.parse(event.data);
+        // TODO save data to state
+        console.log(data);
       });
 
       currentSocketRef.current = socket;
@@ -100,18 +101,22 @@ export default function ({ gameKey, userId }: UseGame) {
     };
   }, [gameKey]);
 
-  useEffect(() => {
-    if (!gameKey) {
-      return;
-    }
-
-    const gameResponse = axios({
+  const handleGetGame = async () => {
+    await axios({
       method: "GET",
       url: `http://${process.env.REACT_APP_API_DOMAIN}/game/${gameKey}`,
       headers: {
         user_id: userId,
       },
     });
+  };
+
+  useEffect(() => {
+    if (!gameKey) {
+      return;
+    }
+
+    handleGetGame();
   }, [gameKey]);
 
   return {
