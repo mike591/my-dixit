@@ -79,7 +79,7 @@ export default function ({ gameKey, userId }: UseGame) {
   useEffect(() => {
     if (gameKey) {
       const socket = new WebSocket(
-        `ws://${process.env.REACT_APP_API_DOMAIN}/game/${gameKey}`
+        `ws://${process.env.REACT_APP_API_DOMAIN}/game?gameKey=${gameKey}`
       );
 
       // Listen for messages
