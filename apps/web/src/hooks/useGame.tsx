@@ -12,18 +12,16 @@ interface GameState {
     isStarted: boolean;
     isGameEnd: boolean;
   };
-  user?: {
-    submittedCardNum: number;
-    selectedCardNum: number;
-    isAdmin: boolean;
-    hand: number[];
-  };
   users?: {
     [key: string]: {
       name: string;
       points: number;
       pointsGained: number;
       readyToProceed: boolean;
+      submittedCardNum: number;
+      selectedCardNum: number;
+      isAdmin: boolean;
+      hand: number[];
     };
   };
   round?: {
@@ -32,12 +30,10 @@ interface GameState {
   };
   setState: ({
     game,
-    user,
     users,
     round,
   }: {
     game: GameState["game"];
-    user: GameState["user"];
     users: GameState["users"];
     round: GameState["round"];
   }) => void;
@@ -47,8 +43,8 @@ const useGameStore = create<GameState>()(
   devtools(
     persist(
       (set) => ({
-        setState({ game, user, users, round }) {
-          set({ game, user, users, round });
+        setState({ game, users, round }) {
+          set({ game, users, round });
         },
       }),
       {
@@ -63,10 +59,9 @@ interface UseGame {
   userId: string;
 }
 export default function ({ gameKey, userId }: UseGame) {
-  const { game, user, users, round, setState } = useGameStore(
+  const { game, users, round, setState } = useGameStore(
     (state) => ({
       game: state.game,
-      user: state.user,
       users: state.users,
       round: state.round,
       setState: state.setState,
@@ -77,7 +72,7 @@ export default function ({ gameKey, userId }: UseGame) {
   // handle sockets
   const currentSocketRef = useRef<WebSocket | null>(null);
   useEffect(() => {
-    if (gameKey) {
+    if (gameKey && !currentSocketRef.current) {
       const socket = new WebSocket(
         `ws://${process.env.REACT_APP_API_DOMAIN}/game?gameKey=${gameKey}`
       );
@@ -85,8 +80,7 @@ export default function ({ gameKey, userId }: UseGame) {
       // Listen for messages
       socket.addEventListener("message", (event) => {
         const data = JSON.parse(event.data);
-        // TODO save data to state
-        console.log(data);
+        setState(data);
       });
 
       currentSocketRef.current = socket;
@@ -101,7 +95,7 @@ export default function ({ gameKey, userId }: UseGame) {
     };
   }, [gameKey]);
 
-  const handleGetGame = async () => {
+  const handleJoinGame = async () => {
     await axios({
       method: "GET",
       url: `http://${process.env.REACT_APP_API_DOMAIN}/game/${gameKey}`,
@@ -112,16 +106,13 @@ export default function ({ gameKey, userId }: UseGame) {
   };
 
   useEffect(() => {
-    if (!gameKey) {
-      return;
+    if (gameKey) {
+      handleJoinGame();
     }
-
-    handleGetGame();
   }, [gameKey]);
 
   return {
     game,
-    user,
     users,
     round,
   };

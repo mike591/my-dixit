@@ -12,9 +12,7 @@ const Game = () => {
   const gameKey = getGameKeyFromLocation();
   const { id } = useUser();
 
-  const { game, user, users, round } = useGame({ gameKey, userId: id });
-
-  console.log({ game, user, users, round });
+  const { game, users, round } = useGame({ gameKey, userId: id });
 
   return <div>Game</div>;
 };

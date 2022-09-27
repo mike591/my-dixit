@@ -51,6 +51,28 @@ async function getAllUsersInGame(gameId) {
   return usersResponse.rows;
 }
 
+async function getAllUserNamesFromGameUsers(gameUsers) {
+  const gameUserIds = gameUsers.map((gameUser) => gameUser.userId);
+  const params = [];
+  for (let i = 1; i <= gameUserIds.length; i++) {
+    params.push("$" + i);
+  }
+
+  const usersResponse = await pool.query(
+    `SELECT * FROM "users" WHERE "id" IN (${params.join(",")})`,
+    gameUserIds
+  );
+
+  return usersResponse.rows;
+}
+
+async function getCurrentRoundFromId(currentRoundId) {
+  const response = await pool.query('SELECT * from "rounds" WHERE "id" = $1', [
+    currentRoundId,
+  ]);
+  return response.rows[0];
+}
+
 async function getAllCurrentRoundActions(currentRoundId) {
   const response = await pool.query(
     'SELECT * from "userRoundActions" WHERE "roundId" = $1',
@@ -59,42 +81,59 @@ async function getAllCurrentRoundActions(currentRoundId) {
   return response.rows;
 }
 
-/*
-  game?: {
-    id: string;
-    gameKey: string;
-    isStarted: boolean;
-    isGameEnd: boolean;
-  };
-  user?: {
-    submittedCardNum: number;
-    selectedCardNum: number;
-    isAdmin: boolean;
-    hand: number[];
-  };
-  users?: {
-    [key: string]: {
-      name: string;
-      points: number;
-      pointsGained: number;
-      readyToProceed: boolean; // for round end
-    };
-  };
-  round?: {
-    activeUserId: string;
-    currentPrompt: string;
-  };
-*/
-
-// TODO: pull out relevant game data into above format
 async function handlePublish({ gameKey, wss }) {
   const game = await getGameFromGameKey(gameKey);
   const gameUsers = await getAllUsersInGame(game.id);
+  const allGameUserNames = await getAllUserNamesFromGameUsers(gameUsers);
+  const currentRound = (await getCurrentRoundFromId(game.currentRoundId)) || {};
   const allCurrentRoundActions = await getAllCurrentRoundActions(
     game.currentRoundId
   );
 
-  const message = JSON.stringify({ game, gameUsers, allCurrentRoundActions });
+  const usersById = {};
+  const initialUserState = {
+    points: 0,
+    hand: [],
+    isAdmin: false,
+    pointsGained: 0,
+    readyToProceed: false,
+    submittedCardNum: null,
+    selectedCardNum: null,
+    name: "",
+  };
+
+  gameUsers.forEach((gameUser) => {
+    usersById[gameUser.userId] = { ...initialUserState }; // initialize user state
+
+    usersById[gameUser.userId].points = gameUser.points;
+    usersById[gameUser.userId].hand = gameUser.hand;
+    usersById[gameUser.userId].isAdmin = gameUser.isAdmin;
+    usersById[gameUser.userId].pointsGained = gameUser.pointsGained ?? 0;
+  });
+
+  allCurrentRoundActions.forEach((action) => {
+    usersById[action.userId].readyToProceed = action.readyToProceed;
+    usersById[action.userId].submittedCardNum = action.submittedCardNum;
+    usersById[action.userId].selectedCardNum = action.selectedCardNum;
+  });
+
+  allGameUserNames.forEach((user) => {
+    usersById[user.id].name = user.name;
+  });
+
+  const message = JSON.stringify({
+    game: {
+      id: game.id,
+      gameKey: gameKey,
+      isStarted: game.isStarted,
+      isGameEnd: game.isGameEnd,
+    },
+    users: usersById,
+    round: {
+      activeUserId: currentRound.activeUserId,
+      currentPrompt: currentRound.currentPrompt,
+    },
+  });
   const clients = [];
   wss.clients.forEach((client) => {
     if (client.gameKey === gameKey) {
@@ -309,10 +348,7 @@ router.get("/:gameKey?/choices", async (req, res, next) => {
 });
 
 async function assignPoints(game) {
-  const currentRoundResponse = await pool.query(
-    'SELECT * from "rounds" WHERE "id" = $1',
-    [game.currentRoundId]
-  );
+  const currentRound = await getCurrentRoundFromId(game.currentRoundId);
 
   const gameUsers = getGameFromGameKey(game.gameKey);
 
@@ -320,7 +356,6 @@ async function assignPoints(game) {
     game.currentRoundId
   );
 
-  const currentRound = currentRoundResponse.rows[0];
   const cardVotes = {};
   allCurrentRoundActions.forEach((userAction) => {
     cardVotes[userAction.guessedCardNum] =
@@ -483,11 +518,9 @@ async function updateUserHands(game) {
 }
 
 async function handleNextRound(game) {
-  const currentRoundResponse = await pool.query(
-    'SELECT * from "rounds" WHERE "id" = $1',
-    [game.currentRoundId]
-  );
-  const activeUserId = currentRoundResponse.rows[0].activeUserId;
+  const currentRound = await getCurrentRoundFromId(game.currentRoundId);
+
+  const activeUserId = currentRound.activeUserId;
   const gameUsers = await getAllUsersInGame(game);
 
   const activeUser = gameUsers.find((gameUser) => {
