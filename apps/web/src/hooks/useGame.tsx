@@ -5,7 +5,7 @@ import axios from "axios";
 import create from "zustand";
 import shallow from "zustand/shallow";
 
-interface GameState {
+export interface GameState {
   game?: {
     id: string;
     gameKey: string;
@@ -55,7 +55,7 @@ const useGameStore = create<GameState>()(
 );
 
 interface UseGame {
-  gameKey: string;
+  gameKey?: string;
   userId: string;
 }
 export default function ({ gameKey, userId }: UseGame) {

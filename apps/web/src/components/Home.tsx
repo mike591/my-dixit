@@ -1,8 +1,8 @@
 import { Button, Divider, Input, Spin } from "antd";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useCallback, useState } from "react";
 
 import Logo from "assets/Logo";
-import { Navigate } from "react-router-dom";
 import axios from "axios";
 import useUser from "hooks/useUser";
 
@@ -11,6 +11,7 @@ const useCreateGame = () => {
   // TODO: possibly complete and move game types to a separate file
   const [newGameResponse, setNewGameResponse] = useState<null | {
     gameKey: string;
+    [key: string]: unknown;
   }>(null);
   const [error, setError] = useState<unknown>(null);
   const { id } = useUser();
@@ -48,18 +49,19 @@ const useCreateGame = () => {
 const Home: React.FC = () => {
   const [gameKey, setGameKey] = useState("");
   const { loading, newGameResponse, createGame } = useCreateGame();
+  const navigate = useNavigate();
 
-  const handleJoinGame = async () => {
-    console.log("Joining game", gameKey);
-  };
+  function handleJoinGame() {
+    navigate(`/game/${gameKey}`);
+  }
 
-  const handleCreateGame = async () => {
+  async function handleCreateGame() {
     await createGame();
-  };
+  }
 
-  const handleUpdateGameKey = (e: React.ChangeEvent<HTMLInputElement>) => {
+  function handleUpdateGameKey(e: React.ChangeEvent<HTMLInputElement>) {
     setGameKey(e.target.value);
-  };
+  }
 
   const hasNewGameKey = newGameResponse?.gameKey;
   return (
@@ -77,7 +79,11 @@ const Home: React.FC = () => {
             onChange={handleUpdateGameKey}
             value={gameKey}
           />
-          <Button type="primary" onClick={handleJoinGame}>
+          <Button
+            type="primary"
+            onClick={handleJoinGame}
+            disabled={!(gameKey || "").trim()}
+          >
             Join Game
           </Button>
         </div>

@@ -1,12 +1,28 @@
-import useGame from "hooks/useGame";
-import { useLocation } from "react-router-dom";
+import useGame, { GameState } from "hooks/useGame";
+
+import Setup from "./Setup";
+import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
 import useUser from "hooks/useUser";
 
-const getGameKeyFromLocation = () => {
-  const location = useLocation();
-  const path = location.pathname;
-  return path.split("/")[2];
-};
+function getGameComponent({
+  game,
+  users,
+  round,
+}: {
+  game: GameState["game"];
+  users: GameState["users"];
+  round: GameState["round"];
+}) {
+  if (!game) {
+    return <div>Loading...</div>;
+  }
+
+  if (!game.isStarted) {
+    return <Setup game={game} users={users} />;
+  }
+
+  return <div>hi</div>;
+}
 
 const Game = () => {
   const gameKey = getGameKeyFromLocation();
@@ -14,7 +30,9 @@ const Game = () => {
 
   const { game, users, round } = useGame({ gameKey, userId: id });
 
-  return <div>Game</div>;
+  const Component = getGameComponent({ game, users, round });
+
+  return <div>{Component}</div>;
 };
 
 export default Game;

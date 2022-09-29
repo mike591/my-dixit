@@ -1,5 +1,4 @@
 import { Route, Routes } from "react-router-dom";
-import { useEffect, useState } from "react";
 
 import Game from "components/Game";
 import Header from "components/Header";
