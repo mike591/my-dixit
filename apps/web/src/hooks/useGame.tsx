@@ -5,6 +5,16 @@ import axios from "axios";
 import create from "zustand";
 import shallow from "zustand/shallow";
 
+export interface UserType {
+  name: string;
+  points: number;
+  pointsGained: number;
+  readyToProceed: boolean;
+  submittedCardNum: number;
+  selectedCardNum: number;
+  isAdmin: boolean;
+  hand: number[];
+}
 export interface GameState {
   game?: {
     id: string;
@@ -13,16 +23,7 @@ export interface GameState {
     isGameEnd: boolean;
   };
   users?: {
-    [key: string]: {
-      name: string;
-      points: number;
-      pointsGained: number;
-      readyToProceed: boolean;
-      submittedCardNum: number;
-      selectedCardNum: number;
-      isAdmin: boolean;
-      hand: number[];
-    };
+    [key: string]: UserType;
   };
   round?: {
     activeUserId: string;

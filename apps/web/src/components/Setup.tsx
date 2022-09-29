@@ -28,6 +28,11 @@ const Controls = ({ game }: ControlsProps) => {
     }, 2000);
   }
 
+  function handleStart() {
+    //TODO: setup start game
+    console.log("start");
+  }
+
   return (
     <div className="grid gap-4 grid-cols-2">
       <div className="flex flex-col gap-2">
@@ -56,7 +61,7 @@ const Controls = ({ game }: ControlsProps) => {
             </CopyToClipboard>
           </div>
         </div>
-        <Button type="primary" className="w-28">
+        <Button type="primary" className="w-28" onClick={handleStart}>
           Start Game
         </Button>
       </div>
