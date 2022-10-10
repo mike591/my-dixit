@@ -3,6 +3,7 @@ import { FIRST_TO_POINTS_GAME_MODE, ROUNDS_GAME_MODE } from "utils/constants";
 
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import { GameState } from "hooks/useGame";
+import UserCard from "./UserCard";
 import { useState } from "react";
 import useUser from "hooks/useUser";
 
@@ -85,8 +86,12 @@ const Setup = ({ game, users }: SetupProps) => {
           Waiting for game to start...
         </Typography.Title>
       )}
-      <hr />
-      <div></div>
+      <hr className="mt-4 mb-4" />
+      <div className="grid grid-cols-5 gap-4">
+        {Object.entries(users || {}).map(([userId, user]) => (
+          <UserCard key={userId} user={user} />
+        ))}
+      </div>
     </div>
   );
 };
