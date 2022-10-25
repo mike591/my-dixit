@@ -247,7 +247,7 @@ router.post("/:gameKey?/start", async (req, res, next) => {
 
     if (!currentRoundId) throw new Error("currentRoundId is not valid");
 
-    const updateGameResponse = await pool.query(
+    await pool.query(
       'UPDATE "games" SET "gameMode" = $1, "numPoints" = $2, "isStarted" = $3, "currentRoundId" = $4, "deck" = $5, "discardPile" = $6, "numUsers" = $7 WHERE "id" = $8 RETURNING *',
       [
         gameMode,
@@ -261,11 +261,8 @@ router.post("/:gameKey?/start", async (req, res, next) => {
       ]
     );
 
-    // TODO: publish players their new cards, game and round
-    res.json({
-      game: updateGameResponse.rows[0],
-      round: newRoundResponse.rows[0],
-    });
+    const wss = req.app.get("wss");
+    await handlePublish({ gameKey, wss });
   } catch (error) {
     console.error(error);
     next(error);
