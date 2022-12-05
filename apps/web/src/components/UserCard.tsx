@@ -22,19 +22,28 @@ function getInitials(name: string): string {
 }
 interface UserCardProps {
   user: UserType;
+  isGameDisplay?: boolean;
 }
-const UserCard = ({ user }: UserCardProps) => {
+const UserCard = ({ user, isGameDisplay }: UserCardProps) => {
   const initials = getInitials(user.name);
   const color = stringToColor(user.name);
+
+  const cardSize = isGameDisplay ? "p-2 w-20 h-28" : "p-8 justify-between";
+  const iconSize = isGameDisplay ? "w-6 h-6 text-xs" : "w-20 h-20";
+
   return (
-    <div className="flex flex-col justify-between items-center border-solid border-2 border-gray-100 p-8 gap-4">
+    <div
+      className={`flex flex-col items-center border-solid border-2 border-gray-100 gap-4 ${cardSize}`}
+    >
       <div
-        className="rounded-full w-20 h-20 flex justify-center items-center"
+        className={`rounded-full flex justify-center items-center ${iconSize}`}
         style={{ backgroundColor: color }}
       >
         {initials}
       </div>
-      <Typography.Text>{user.name}</Typography.Text>
+      <Typography.Text className="text-center text-xs">
+        {user.name}
+      </Typography.Text>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import useGame, { GameState } from "hooks/useGame";
 
+import GameInfoDisplay from "./GameInfoDisplay";
 import Setup from "./Setup";
 import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
 import useUser from "hooks/useUser";
@@ -21,13 +22,20 @@ function getGameComponent({
     return <Setup game={game} users={users} />;
   }
 
-  return <div>hi</div>;
+  console.log({ game, users, round });
+
+  return (
+    <div>
+      <GameInfoDisplay />
+      <hr className="mt-4 mb-4" />
+      <div>Hi</div>
+    </div>
+  );
 }
 
 const Game = () => {
   const gameKey = getGameKeyFromLocation();
   const { id } = useUser();
-
   const { game, users, round } = useGame({ gameKey, userId: id });
 
   const Component = getGameComponent({ game, users, round });

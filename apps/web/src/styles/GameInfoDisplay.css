@@ -1,0 +1,13 @@
+.slide-right-to-left {
+  position: relative;
+  animation: 10s slide-right-to-left linear infinite;
+}
+
+@keyframes slide-right-to-left {
+  from {
+    left: -50%;
+  }
+  to {
+    left: 100%;
+  }
+}
