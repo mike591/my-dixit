@@ -1,11 +1,10 @@
-import { Button, Input, Select, Typography } from "antd";
+import { Button, Input, Select, Spin, Typography } from "antd";
 import { FIRST_TO_POINTS_GAME_MODE, ROUNDS_GAME_MODE } from "utils/constants";
 
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import { GameState } from "hooks/useGame";
 import UserCard from "./UserCard";
 import axios from "axios";
-import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
 import { useState } from "react";
 import useUser from "hooks/useUser";
 
@@ -79,38 +78,40 @@ const Controls = ({ game }: ControlsProps) => {
   }
 
   return (
-    <div className="grid gap-4 grid-cols-2">
-      <div className="flex flex-col gap-2">
-        <Select
-          defaultValue={FIRST_TO_POINTS_GAME_MODE}
-          onChange={handleSetGameMode}
-        >
-          <Option value={FIRST_TO_POINTS_GAME_MODE} disabled>
-            First to points
-          </Option>
-        </Select>
-        <Select defaultValue={DEFAULT_NUM_POINTS} disabled>
-          <Option value={DEFAULT_NUM_POINTS}>{DEFAULT_NUM_POINTS}</Option>
-        </Select>
-      </div>
-      <div className="flex flex-col gap-2 items-center">
-        <div className="flex gap-2 items-center">
-          <Typography.Text>Game key:</Typography.Text>
-          <div className="flex">
-            <Input placeholder="Points" value={game?.gameKey} disabled />
-            <CopyToClipboard
-              text={game?.gameKey || ""}
-              onCopy={handleSetCopied}
-            >
-              <Button>{copied ? "Copied" : "Copy"}</Button>
-            </CopyToClipboard>
-          </div>
+    <Spin spinning={loading}>
+      <div className="grid gap-4 grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <Select
+            defaultValue={FIRST_TO_POINTS_GAME_MODE}
+            onChange={handleSetGameMode}
+          >
+            <Option value={FIRST_TO_POINTS_GAME_MODE} disabled>
+              First to points
+            </Option>
+          </Select>
+          <Select defaultValue={DEFAULT_NUM_POINTS} disabled>
+            <Option value={DEFAULT_NUM_POINTS}>{DEFAULT_NUM_POINTS}</Option>
+          </Select>
         </div>
-        <Button type="primary" className="w-28" onClick={handleStart}>
-          Start Game
-        </Button>
+        <div className="flex flex-col gap-2 items-center">
+          <div className="flex gap-2 items-center">
+            <Typography.Text>Game key:</Typography.Text>
+            <div className="flex">
+              <Input placeholder="Points" value={game?.gameKey} disabled />
+              <CopyToClipboard
+                text={game?.gameKey || ""}
+                onCopy={handleSetCopied}
+              >
+                <Button>{copied ? "Copied" : "Copy"}</Button>
+              </CopyToClipboard>
+            </div>
+          </div>
+          <Button type="primary" className="w-28" onClick={handleStart}>
+            Start Game
+          </Button>
+        </div>
       </div>
-    </div>
+    </Spin>
   );
 };
 

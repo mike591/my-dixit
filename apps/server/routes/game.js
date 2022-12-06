@@ -132,6 +132,8 @@ async function handlePublish({ gameKey, wss }) {
     round: {
       activeUserId: currentRound.activeUserId,
       currentPrompt: currentRound.currentPrompt,
+      roundNum: currentRound.roundNum,
+      gameStage: currentRound.gameStage,
     },
   });
   const clients = [];

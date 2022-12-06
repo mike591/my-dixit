@@ -1,15 +1,35 @@
 import "styles/GameInfoDisplay.css";
 
+import useGame, { GameState } from "hooks/useGame";
+
 import { Typography } from "antd";
 import UserCard from "./UserCard";
 import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
-import useGame from "hooks/useGame";
 import useUser from "hooks/useUser";
+
+type DisplayTextProps = {
+  users: GameState["users"];
+  round: GameState["round"];
+};
+function getDisplayText({ users, round }: DisplayTextProps) {
+  if (round?.gameStage === 0) {
+    const activeUser = users?.[round.activeUserId];
+    return `Waiting for ${
+      activeUser?.name || "the active user"
+    } to select a card and prompt`;
+  } else if (round?.gameStage === 1) {
+    return "Waiting for other players to pick a card...";
+  } else if (round?.gameStage === 2) {
+    return "Waiting for everyone to vote...";
+  } else {
+    return "Waiting for players to ready up for next round...";
+  }
+}
 
 const GameInfoDisplay = () => {
   const gameKey = getGameKeyFromLocation();
   const { id } = useUser();
-  const { game, users, round } = useGame({ gameKey, userId: id });
+  const { users, round } = useGame({ gameKey, userId: id });
 
   return (
     <div>
@@ -31,7 +51,7 @@ const GameInfoDisplay = () => {
       <hr className="mt-4 mb-4" />
       <div className="w-full overflow-hidden border-2 border-gray-200">
         <Typography className="slide-right-to-left">
-          Test Test Test Test Test
+          {getDisplayText({ users, round })}
         </Typography>
       </div>
     </div>

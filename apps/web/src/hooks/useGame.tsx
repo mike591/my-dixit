@@ -28,6 +28,8 @@ export interface GameState {
   round?: {
     activeUserId: string;
     currentPrompt: string;
+    roundNum: number;
+    gameStage: number;
   };
   setState: ({
     game,

@@ -5,15 +5,31 @@ import Setup from "./Setup";
 import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
 import useUser from "hooks/useUser";
 
-function getGameComponent({
-  game,
-  users,
-  round,
-}: {
-  game: GameState["game"];
+type CurrentGameContentProps = {
   users: GameState["users"];
   round: GameState["round"];
-}) {
+  game: GameState["game"];
+  userId: string;
+};
+function getCurrentGameContent({
+  users,
+  round,
+  game,
+  userId,
+}: CurrentGameContentProps) {
+  if (round?.gameStage === 0) {
+    const isActiveUser = round.activeUserId === userId;
+    isActiveUser ? <div>You are active</div> : <div>Show cards here</div>;
+  }
+
+  return <div>Game is started</div>;
+}
+
+const Game = () => {
+  const gameKey = getGameKeyFromLocation();
+  const { id } = useUser();
+  const { game, users, round } = useGame({ gameKey, userId: id });
+
   if (!game) {
     return <div>Loading...</div>;
   }
@@ -22,25 +38,13 @@ function getGameComponent({
     return <Setup game={game} users={users} />;
   }
 
-  console.log({ game, users, round });
-
   return (
     <div>
       <GameInfoDisplay />
       <hr className="mt-4 mb-4" />
-      <div>Hi</div>
+      <div>{getCurrentGameContent({ game, users, round, userId: id })}</div>
     </div>
   );
-}
-
-const Game = () => {
-  const gameKey = getGameKeyFromLocation();
-  const { id } = useUser();
-  const { game, users, round } = useGame({ gameKey, userId: id });
-
-  const Component = getGameComponent({ game, users, round });
-
-  return <div>{Component}</div>;
 };
 
 export default Game;
