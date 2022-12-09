@@ -165,6 +165,7 @@ router.get("/:gameKey?", async (req, res, next) => {
     );
 
     if (!userInGameResponse.rowCount) {
+      if (game.isStarted) throw new Error("game has already started");
       const newGameUsersId = uuidv4();
       await pool.query(
         'INSERT INTO "gameUsers" (id, "gameId", "userId", "isAdmin") VALUES ($1, $2, $3, $4) RETURNING *',

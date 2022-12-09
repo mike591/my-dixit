@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import axios from "axios";
 import create from "zustand";
 import shallow from "zustand/shallow";
+import { useNavigate } from "react-router-dom";
 
 export interface UserType {
   name: string;
@@ -62,6 +63,8 @@ interface UseGame {
   userId: string;
 }
 export default function ({ gameKey, userId }: UseGame) {
+  const navigate = useNavigate();
+
   const { game, users, round, setState } = useGameStore(
     (state) => ({
       game: state.game,
@@ -105,6 +108,8 @@ export default function ({ gameKey, userId }: UseGame) {
       headers: {
         user_id: userId,
       },
+    }).catch(() => {
+      navigate("/game-already-started");
     });
   };
 

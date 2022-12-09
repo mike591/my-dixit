@@ -1,7 +1,9 @@
 import useGame, { GameState } from "hooks/useGame";
 
-import GameInfoDisplay from "./GameInfoDisplay";
-import Setup from "./Setup";
+import ActiveUserGame from "components/ActiveUserGame";
+import GameCardsDisplay from "components/GameCardsDisplay";
+import GameInfoDisplay from "components/GameInfoDisplay";
+import Setup from "components/Setup";
 import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
 import useUser from "hooks/useUser";
 
@@ -17,9 +19,17 @@ function getCurrentGameContent({
   game,
   userId,
 }: CurrentGameContentProps) {
+  console.log({ users, round, game });
+
+  const currentUser = users?.[userId] || { hand: [] };
+
   if (round?.gameStage === 0) {
     const isActiveUser = round.activeUserId === userId;
-    isActiveUser ? <div>You are active</div> : <div>Show cards here</div>;
+    return isActiveUser ? (
+      <ActiveUserGame />
+    ) : (
+      <GameCardsDisplay hand={currentUser.hand} />
+    );
   }
 
   return <div>Game is started</div>;
