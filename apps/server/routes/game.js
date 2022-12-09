@@ -279,15 +279,16 @@ router.post("/:gameKey?/init-round", async (req, res, next) => {
 
     const game = await getGameFromGameKey(gameKey);
 
-    if (!game || prompt || cardNum === undefined)
+    if (!game || !prompt || !cardNum)
       throw new Error("game, prompt and card num is required!");
 
-    const updateRoundResponse = await pool.query(
+    await pool.query(
       'UPDATE "rounds" SET "currentCardNum" = $1, "currentPrompt" = $2, "gameStage" = $3 WHERE "id" = $4 RETURNING *',
       [cardNum, prompt, 1, game.currentRoundId]
     );
 
-    res.json(updateRoundResponse.rows[0]);
+    const wss = req.app.get("wss");
+    await handlePublish({ gameKey, wss });
   } catch (error) {
     console.error(error);
     next(error);

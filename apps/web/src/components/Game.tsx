@@ -1,4 +1,4 @@
-import useGame, { GameState, UserType } from "hooks/useGame";
+import useGame, { GameState } from "hooks/useGame";
 
 import ActiveUserGame from "components/ActiveUserGame";
 import GameCardsDisplay from "components/GameCardsDisplay";
@@ -30,10 +30,12 @@ function getCurrentGameContent({
   if (round?.gameStage === 0) {
     const isActiveUser = round.activeUserId === userId;
     return isActiveUser ? (
-      <ActiveUserGame currentUser={currentUser} round={round} game={game} />
+      <ActiveUserGame currentUser={currentUser} game={game} />
     ) : (
       <GameCardsDisplay hand={currentUser.hand} />
     );
+  } else if (round?.gameStage === 1) {
+    return <div>Choose a fake answer!</div>;
   }
 
   return <div>Game is started</div>;
