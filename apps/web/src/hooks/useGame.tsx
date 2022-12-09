@@ -14,7 +14,7 @@ export interface UserType {
   submittedCardNum: number;
   selectedCardNum: number;
   isAdmin: boolean;
-  hand: number[];
+  hand: string[];
 }
 export interface GameState {
   game?: {

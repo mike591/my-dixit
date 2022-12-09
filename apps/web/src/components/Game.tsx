@@ -1,4 +1,4 @@
-import useGame, { GameState } from "hooks/useGame";
+import useGame, { GameState, UserType } from "hooks/useGame";
 
 import ActiveUserGame from "components/ActiveUserGame";
 import GameCardsDisplay from "components/GameCardsDisplay";
@@ -21,12 +21,16 @@ function getCurrentGameContent({
 }: CurrentGameContentProps) {
   console.log({ users, round, game });
 
-  const currentUser = users?.[userId] || { hand: [] };
+  if (!users) {
+    return <div>Loading...</div>;
+  }
+
+  const currentUser = users[userId];
 
   if (round?.gameStage === 0) {
     const isActiveUser = round.activeUserId === userId;
     return isActiveUser ? (
-      <ActiveUserGame />
+      <ActiveUserGame currentUser={currentUser} round={round} game={game} />
     ) : (
       <GameCardsDisplay hand={currentUser.hand} />
     );

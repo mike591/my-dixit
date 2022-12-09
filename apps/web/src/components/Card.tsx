@@ -1,11 +1,15 @@
 type CardProps = {
-  cardNum: number;
-  callback?: () => void;
+  cardNum: string;
+  onClick?: (cardNum: string) => void;
 };
 
-const Card = ({ cardNum, callback }: CardProps) => {
+const Card = ({ cardNum, onClick }: CardProps) => {
+  const handleClick = onClick ? () => onClick(cardNum) : () => null;
   return (
-    <div onClick={callback} className="w-40">
+    <div
+      onClick={handleClick}
+      className={`w-40 ${onClick && "cursor-pointer"}`}
+    >
       <img src={require(`assets/cards/${cardNum}.jpg`)} />
     </div>
   );
