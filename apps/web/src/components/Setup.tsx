@@ -55,8 +55,9 @@ const useStartGame = () => {
 
 interface ControlsProps {
   game: GameState["game"];
+  users: GameState["users"];
 }
-const Controls = ({ game }: ControlsProps) => {
+const Controls = ({ game, users }: ControlsProps) => {
   const [gameMode, setGameMode] = useState<GameMode>(FIRST_TO_POINTS_GAME_MODE);
   const [copied, setCopied] = useState(false);
 
@@ -106,7 +107,12 @@ const Controls = ({ game }: ControlsProps) => {
               </CopyToClipboard>
             </div>
           </div>
-          <Button type="primary" className="w-28" onClick={handleStart}>
+          <Button
+            type="primary"
+            className="w-28"
+            onClick={handleStart}
+            disabled={Object.keys(users || {}).length <= 1}
+          >
             Start Game
           </Button>
         </div>
@@ -125,7 +131,7 @@ const Setup = ({ game, users }: SetupProps) => {
 
   return (
     <div className="flex flex-col gap-4">
-      {user?.isAdmin && <Controls game={game} />}
+      {user?.isAdmin && <Controls game={game} users={users} />}
       {!user?.isAdmin && (
         <Typography.Title className="flex justify-center">
           Waiting for game to start...

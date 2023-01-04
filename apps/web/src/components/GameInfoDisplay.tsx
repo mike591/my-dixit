@@ -8,17 +8,23 @@ import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
 import useUser from "hooks/useUser";
 
 type DisplayTextProps = {
-  users: GameState["users"];
-  round: GameState["round"];
+  users: NonNullable<GameState["users"]>;
+  round: NonNullable<GameState["round"]>;
+  currentUserId: string;
 };
-function getDisplayText({ users, round }: DisplayTextProps) {
+function getDisplayText({ users, round, currentUserId }: DisplayTextProps) {
+  const activeUser = round && users?.[round.activeUserId];
+  const currentUser = users?.[currentUserId];
+
   if (round?.gameStage === 0) {
-    const activeUser = users?.[round.activeUserId];
     return `Waiting for ${
       activeUser?.name || "the active user"
     } to select a card and prompt`;
   } else if (round?.gameStage === 1) {
-    return "Waiting for other players to pick a card...";
+    const isSubmitted = Boolean(currentUser?.submittedCardNum);
+    return isSubmitted || round.activeUserId === currentUserId
+      ? "Waiting for other players to pick a card..."
+      : "Please select a card to trick other players with...";
   } else if (round?.gameStage === 2) {
     return "Waiting for everyone to vote...";
   } else {
@@ -30,6 +36,7 @@ const GameInfoDisplay = () => {
   const gameKey = getGameKeyFromLocation();
   const { id } = useUser();
   const { users, round } = useGame({ gameKey, userId: id });
+  if (!users || !round) return <div>Loading...</div>;
 
   return (
     <div>
@@ -51,7 +58,7 @@ const GameInfoDisplay = () => {
       <hr className="mt-4 mb-4" />
       <div className="w-full overflow-hidden border-2 border-gray-200">
         <Typography className="slide-right-to-left">
-          {getDisplayText({ users, round })}
+          {getDisplayText({ users, round, currentUserId: id })}
         </Typography>
       </div>
     </div>

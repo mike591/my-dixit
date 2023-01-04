@@ -3,7 +3,9 @@ import useGame, { GameState } from "hooks/useGame";
 import ActiveUserGame from "components/ActiveUserGame";
 import GameCardsDisplay from "components/GameCardsDisplay";
 import GameInfoDisplay from "components/GameInfoDisplay";
+import GuessersGame from "components/GuessersGame";
 import Setup from "components/Setup";
+import { Typography } from "antd";
 import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
 import useUser from "hooks/useUser";
 
@@ -26,19 +28,35 @@ function getCurrentGameContent({
   }
 
   const currentUser = users[userId];
+  const isActiveUser = round?.activeUserId === userId;
 
   if (round?.gameStage === 0) {
-    const isActiveUser = round.activeUserId === userId;
     return isActiveUser ? (
       <ActiveUserGame currentUser={currentUser} game={game} />
     ) : (
       <GameCardsDisplay hand={currentUser.hand} />
     );
   } else if (round?.gameStage === 1) {
-    return <div>Choose a fake answer!</div>;
+    return (
+      <div>
+        <Typography.Title className="flex justify-center">
+          {round.currentPrompt}
+        </Typography.Title>
+        {isActiveUser ? (
+          <GameCardsDisplay
+            hand={currentUser.hand}
+            activeCardNum={round.currentCardNum}
+          />
+        ) : (
+          <GuessersGame currentUser={currentUser} game={game} />
+        )}
+      </div>
+    );
+  } else if (round?.gameStage === 2) {
+    return <div>Time to select the correct card...</div>;
+  } else {
+    return <div>Game is started</div>;
   }
-
-  return <div>Game is started</div>;
 }
 
 const Game = () => {

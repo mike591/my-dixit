@@ -132,6 +132,7 @@ async function handlePublish({ gameKey, wss }) {
     round: {
       activeUserId: currentRound.activeUserId,
       currentPrompt: currentRound.currentPrompt,
+      currentCardNum: currentRound.currentCardNum,
       roundNum: currentRound.roundNum,
       gameStage: currentRound.gameStage,
     },
@@ -304,11 +305,12 @@ router.post("/:gameKey?/submit-card", async (req, res, next) => {
     if (!userId || cardNum === undefined)
       throw new Error("user id and card num is required");
 
-    const game = getGameFromGameKey(gameKey);
+    const game = await getGameFromGameKey(gameKey);
 
     const newUserRoundActionId = uuidv4();
-    const createUserRoundActionResponse = await pool.query(
-      'INSERT into "userRoundActions" ("id", "userId" "roundId", "submittedCardNum") VALUES ($1, $2, $3, $4) RETURNING *',
+
+    await pool.query(
+      'INSERT into "userRoundActions" ("id", "userId", "roundId", "submittedCardNum") VALUES ($1, $2, $3, $4) RETURNING *',
       [newUserRoundActionId, userId, game.currentRoundId, cardNum]
     );
 
@@ -316,16 +318,17 @@ router.post("/:gameKey?/submit-card", async (req, res, next) => {
       game.currentRoundId
     );
 
-    const usersAwaitingSubmissionCount = game.numUsers;
-    if (allCurrentRoundActions.length === usersAwaitingSubmissionCount) {
-      // TODO: publish new round response
+    const usersAwaitingSubmissionCount = game.numUsers - 1; // minus the active user
+    if (allCurrentRoundActions.length >= usersAwaitingSubmissionCount) {
       await pool.query(
         'UPDATE "rounds" SET "gameStage" = $1 WHERE "id" = $2 RETURNING *',
         [2, game.currentRoundId]
       );
     }
 
-    res.json(createUserRoundActionResponse.rows[0]);
+    const wss = req.app.get("wss");
+    await handlePublish({ gameKey, wss });
+    return res.json({ success: true });
   } catch (error) {
     console.error(error);
     next(error);
@@ -336,7 +339,7 @@ router.get("/:gameKey?/choices", async (req, res, next) => {
   try {
     const gameKey = req.params?.gameKey;
 
-    const game = getGameFromGameKey(gameKey);
+    const game = await getGameFromGameKey(gameKey);
     const allCurrentRoundActions = await getAllCurrentRoundActions(
       game.currentRoundId
     );
@@ -351,7 +354,7 @@ router.get("/:gameKey?/choices", async (req, res, next) => {
 async function assignPoints(game) {
   const currentRound = await getCurrentRoundFromId(game.currentRoundId);
 
-  const gameUsers = getGameFromGameKey(game.gameKey);
+  const gameUsers = await getGameFromGameKey(game.gameKey);
 
   const allCurrentRoundActions = await getAllCurrentRoundActions(
     game.currentRoundId
@@ -435,7 +438,7 @@ router.post("/:gameKey?/guess", async (req, res, next) => {
     if (!userId || cardNum === undefined)
       throw new Error("user id and card num is required");
 
-    const game = getGameFromGameKey(gameKey);
+    const game = await getGameFromGameKey(gameKey);
 
     const updateUserRoundActionsResponse = await pool.query(
       'UPDATE "userRoundActions" SET "guessedCardNum" = $1 WHERE "roundId" = $2 AND "userId" = $3 RETURNING *',
@@ -553,7 +556,7 @@ router.post("/:gameKey?/ready", async (req, res, next) => {
 
     if (!userId) throw new Error("user id and card num is required");
 
-    const game = getGameFromGameKey(gameKey);
+    const game = await getGameFromGameKey(gameKey);
 
     const updateUserRoundActionsResponse = await pool.query(
       'UPDATE "userRoundActions" SET "readyToProceed" = $1 WHERE "roundId" = $2 AND "userId" = $3 RETURNING *',

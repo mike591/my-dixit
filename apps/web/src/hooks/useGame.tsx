@@ -11,8 +11,8 @@ export interface UserType {
   points: number;
   pointsGained: number;
   readyToProceed: boolean;
-  submittedCardNum: number;
-  selectedCardNum: number;
+  submittedCardNum: string;
+  selectedCardNum: string;
   isAdmin: boolean;
   hand: string[];
 }
@@ -28,6 +28,7 @@ export interface GameState {
   };
   round?: {
     activeUserId: string;
+    currentCardNum: string;
     currentPrompt: string;
     roundNum: number;
     gameStage: number;
