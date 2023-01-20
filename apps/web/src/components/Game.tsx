@@ -34,7 +34,7 @@ function getCurrentGameContent({
 
   if (adminSelectingCardAndPromptPhase) {
     return isActiveUser ? (
-      <ActiveUserGame currentUser={currentUser} game={game} />
+      <ActiveUserGame currentUser={currentUser} />
     ) : (
       <GameCardsDisplay hand={currentUser.hand} />
     );

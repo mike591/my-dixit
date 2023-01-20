@@ -132,7 +132,7 @@ async function handlePublish({ gameKey, wss }) {
     round: {
       activeUserId: currentRound.activeUserId,
       currentPrompt: currentRound.currentPrompt,
-      currentCardNum: currentRound.currentCardNum,
+      currentCardNum: `${currentRound.currentCardNum}`, // my bad...
       roundNum: currentRound.roundNum,
       gameStage: currentRound.gameStage,
     },
@@ -410,7 +410,8 @@ async function assignPoints(game) {
             (user) => user.userId === gameUser.userId
           );
           const pointsToAdd =
-            (userAction.submittedCardNum === currentRound.currentCardNum
+            (String(userAction.submittedCardNum) ===
+            String(currentRound.currentCardNum)
               ? 3
               : 0) + (cardVotes[userAction.submittedCardNum] || 0);
 

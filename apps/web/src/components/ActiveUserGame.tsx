@@ -1,11 +1,11 @@
-import { GameState, UserType } from "hooks/useGame";
 import { Input, Modal, Spin } from "antd";
-
+import axios from "axios";
 import Card from "components/Card";
 import GameCardsDisplay from "components/GameCardsDisplay";
-import axios from "axios";
-import { useState } from "react";
+import useGame, { GameState, UserType } from "hooks/useGame";
 import useUser from "hooks/useUser";
+import { useState } from "react";
+import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
 
 interface InitializeGameProps {
   cardNum: string;
@@ -48,9 +48,13 @@ const useInitializeGame = ({ game }: { game: GameState["game"] }) => {
 
 type ActiveUserGameProps = {
   currentUser: UserType;
-  game: GameState["game"];
 };
-const ActiveUserGame = ({ currentUser, game }: ActiveUserGameProps) => {
+const ActiveUserGame = ({ currentUser }: ActiveUserGameProps) => {
+  const gameKey = getGameKeyFromLocation();
+  const { id } = useUser();
+  const { game, users, round } = useGame({ gameKey, userId: id });
+  if (!game || !users || !round) return null;
+
   const [prompt, setPrompt] = useState("");
   const [cardNum, setCardNum] = useState<string | undefined>();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -92,7 +96,11 @@ const ActiveUserGame = ({ currentUser, game }: ActiveUserGameProps) => {
           />
         </div>
       </Modal>
-      <GameCardsDisplay hand={currentUser.hand} onClick={handleSetCard} />
+      <GameCardsDisplay
+        hand={currentUser.hand}
+        onClick={handleSetCard}
+        activeCardNum={round.currentCardNum}
+      />
     </Spin>
   );
 };
