@@ -14,7 +14,7 @@ async function getGameFromGameKey(gameKey) {
   return gameResponse.rows[0];
 }
 
-const CARD_TOTAL = 108;
+const CARD_TOTAL = 107;
 function shuffle(cards = []) {
   const array = [...cards];
 
@@ -409,11 +409,12 @@ async function assignPoints(game) {
           const userAction = allCurrentRoundActions.find(
             (user) => user.userId === gameUser.userId
           );
+          const didGuessCorrect =
+            String(userAction.guessedCardNum) ===
+            String(currentRound.currentCardNum);
           const pointsToAdd =
-            (String(userAction.submittedCardNum) ===
-            String(currentRound.currentCardNum)
-              ? 3
-              : 0) + (cardVotes[userAction.submittedCardNum] || 0);
+            (didGuessCorrect ? 3 : 0) +
+            (cardVotes[userAction.submittedCardNum] || 0);
 
           return await pool.query(
             'UPDATE "gameUsers" SET "points" = $1, "pointsGained" = $2 WHERE "gameId" = $3 AND "userId" = $4',
