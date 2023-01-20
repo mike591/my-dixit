@@ -1,10 +1,9 @@
-import { devtools, persist } from "zustand/middleware";
-import { useEffect, useRef } from "react";
-
 import axios from "axios";
-import create from "zustand";
-import shallow from "zustand/shallow";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import create from "zustand";
+import { devtools, persist } from "zustand/middleware";
+import shallow from "zustand/shallow";
 
 export interface UserType {
   name: string;
@@ -12,7 +11,7 @@ export interface UserType {
   pointsGained: number;
   readyToProceed: boolean;
   submittedCardNum: string;
-  selectedCardNum: string;
+  guessedCardNum: string;
   isAdmin: boolean;
   hand: string[];
 }

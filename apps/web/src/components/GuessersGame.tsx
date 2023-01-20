@@ -1,11 +1,11 @@
-import { GameState, UserType } from "hooks/useGame";
-import { Modal, Spin } from "antd";
-
 import Card from "./Card";
-import GameCardsDisplay from "components/GameCardsDisplay";
+import { Modal, Spin } from "antd";
 import axios from "axios";
-import { useState } from "react";
+import GameCardsDisplay from "components/GameCardsDisplay";
+import useGame, { GameState } from "hooks/useGame";
 import useUser from "hooks/useUser";
+import { SetStateAction, useEffect, useState } from "react";
+import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
 
 interface SubmitCardProps {
   cardNum: string;
@@ -43,14 +43,91 @@ const useSubmitCard = ({ game }: { game: GameState["game"] }) => {
   };
 };
 
-type GuessersGameProps = {
-  currentUser: UserType;
-  game: GameState["game"];
-};
-const GuessersGame = ({ currentUser, game }: GuessersGameProps) => {
-  const [card, setCard] = useState<string | undefined>();
+const useGuessCard = ({ game }: { game: GameState["game"] }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const { id } = useUser();
 
-  const { submitCard, loading } = useSubmitCard({ game });
+  async function guessCard({ cardNum }: SubmitCardProps) {
+    setLoading(true);
+    try {
+      const url = `http://${process.env.REACT_APP_API_DOMAIN}/game/${game?.gameKey}/guess`;
+      await axios({
+        method: "POST",
+        url,
+        headers: {
+          user_id: id,
+        },
+        data: {
+          cardNum,
+        },
+      });
+    } catch (err: unknown) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return {
+    loading,
+    error,
+    guessCard,
+  };
+};
+
+const GuessersGame = () => {
+  const gameKey = getGameKeyFromLocation();
+  const { id } = useUser();
+  const { game, users, round } = useGame({ gameKey, userId: id });
+  if (!game || !users || !round) return null;
+
+  const currentUser = users[id];
+
+  const [card, setCard] = useState<string | undefined>();
+  const [availableCardsToGuess, setAvailableCardsToGuess] = useState<string[]>(
+    []
+  );
+
+  function shuffle(cards: any[]): any[] {
+    const array = [...cards];
+
+    let currentIndex = array.length,
+      randomIndex;
+
+    while (currentIndex != 0) {
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+
+      [array[currentIndex], array[randomIndex]] = [
+        array[randomIndex],
+        array[currentIndex],
+      ];
+    }
+
+    return array;
+  }
+
+  useEffect(() => {
+    const newAvailableCards: string[] = [];
+    Object.entries(users).forEach(([userId, user]) => {
+      if (userId !== id && user.submittedCardNum) {
+        newAvailableCards.push(user.submittedCardNum);
+      }
+    });
+    newAvailableCards.push(round.currentCardNum);
+    shuffle(newAvailableCards);
+    setAvailableCardsToGuess(newAvailableCards);
+  }, [users]);
+
+  const isGuessingRound = round.gameStage === 2;
+
+  const { submitCard, loading: submitLoading } = useSubmitCard({ game });
+  const { guessCard, loading: guessLoading } = useGuessCard({ game });
+
+  const alreadySubmitted = isGuessingRound
+    ? currentUser.guessedCardNum
+    : currentUser.submittedCardNum;
 
   function handleSetCard(cardNum: string) {
     setCard(cardNum);
@@ -58,7 +135,8 @@ const GuessersGame = ({ currentUser, game }: GuessersGameProps) => {
 
   async function handleConfirm() {
     if (card) {
-      await submitCard({ cardNum: card });
+      const cardCall = isGuessingRound ? guessCard : submitCard;
+      await cardCall({ cardNum: card });
       setCard(undefined);
     }
   }
@@ -68,9 +146,11 @@ const GuessersGame = ({ currentUser, game }: GuessersGameProps) => {
   }
 
   return (
-    <Spin spinning={loading}>
+    <Spin spinning={submitLoading || guessLoading}>
       <Modal
-        title="Are you sure you would like to submit this card?"
+        title={`Are you sure you would like to ${
+          isGuessingRound ? "guess" : "submit"
+        } this card?`}
         open={Boolean(card)}
         onCancel={handleCancel}
         onOk={handleConfirm}
@@ -81,9 +161,13 @@ const GuessersGame = ({ currentUser, game }: GuessersGameProps) => {
         </div>
       </Modal>
       <GameCardsDisplay
-        hand={currentUser.hand}
-        onClick={handleSetCard}
-        activeCardNum={currentUser.submittedCardNum}
+        hand={isGuessingRound ? availableCardsToGuess : currentUser.hand}
+        onClick={(!alreadySubmitted && handleSetCard) || undefined}
+        activeCardNum={
+          isGuessingRound
+            ? currentUser.guessedCardNum
+            : currentUser.submittedCardNum
+        }
       />
     </Spin>
   );

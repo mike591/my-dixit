@@ -1,13 +1,12 @@
-import useGame, { GameState } from "hooks/useGame";
-
+import { Typography } from "antd";
 import ActiveUserGame from "components/ActiveUserGame";
 import GameCardsDisplay from "components/GameCardsDisplay";
 import GameInfoDisplay from "components/GameInfoDisplay";
 import GuessersGame from "components/GuessersGame";
 import Setup from "components/Setup";
-import { Typography } from "antd";
-import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
+import useGame, { GameState } from "hooks/useGame";
 import useUser from "hooks/useUser";
+import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
 
 type CurrentGameContentProps = {
   users: GameState["users"];
@@ -23,20 +22,23 @@ function getCurrentGameContent({
 }: CurrentGameContentProps) {
   console.log({ users, round, game });
 
-  if (!users) {
+  if (!users || round === undefined) {
     return <div>Loading...</div>;
   }
 
   const currentUser = users[userId];
   const isActiveUser = round?.activeUserId === userId;
 
-  if (round?.gameStage === 0) {
+  const adminSelectingCardAndPromptPhase = round?.gameStage === 0;
+  const guessersPlayingTheGame = [1, 2].includes(round?.gameStage || -1);
+
+  if (adminSelectingCardAndPromptPhase) {
     return isActiveUser ? (
       <ActiveUserGame currentUser={currentUser} game={game} />
     ) : (
       <GameCardsDisplay hand={currentUser.hand} />
     );
-  } else if (round?.gameStage === 1) {
+  } else if (guessersPlayingTheGame) {
     return (
       <div>
         <Typography.Title className="flex justify-center">
@@ -48,12 +50,10 @@ function getCurrentGameContent({
             activeCardNum={round.currentCardNum}
           />
         ) : (
-          <GuessersGame currentUser={currentUser} game={game} />
+          <GuessersGame />
         )}
       </div>
     );
-  } else if (round?.gameStage === 2) {
-    return <div>Time to select the correct card...</div>;
   } else {
     return <div>Game is started</div>;
   }

@@ -1,11 +1,9 @@
-import "styles/GameInfoDisplay.css";
-
-import useGame, { GameState } from "hooks/useGame";
-
-import { Typography } from "antd";
 import UserCard from "./UserCard";
-import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
+import { Typography } from "antd";
+import useGame, { GameState } from "hooks/useGame";
 import useUser from "hooks/useUser";
+import "styles/GameInfoDisplay.css";
+import getGameKeyFromLocation from "utils/getGameKeyFromLocation";
 
 type DisplayTextProps = {
   users: NonNullable<GameState["users"]>;
@@ -26,7 +24,10 @@ function getDisplayText({ users, round, currentUserId }: DisplayTextProps) {
       ? "Waiting for other players to pick a card..."
       : "Please select a card to trick other players with...";
   } else if (round?.gameStage === 2) {
-    return "Waiting for everyone to vote...";
+    const isSelected = Boolean(currentUser?.guessedCardNum);
+    return isSelected || round.activeUserId === currentUserId
+      ? "Waiting for other players to pick a card..."
+      : "Please guess the active player's card...";
   } else {
     return "Waiting for players to ready up for next round...";
   }

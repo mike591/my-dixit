@@ -98,7 +98,7 @@ async function handlePublish({ gameKey, wss }) {
     pointsGained: 0,
     readyToProceed: false,
     submittedCardNum: null,
-    selectedCardNum: null,
+    guessedCardNum: null,
     name: "",
   };
 
@@ -114,7 +114,7 @@ async function handlePublish({ gameKey, wss }) {
   allCurrentRoundActions.forEach((action) => {
     usersById[action.userId].readyToProceed = action.readyToProceed;
     usersById[action.userId].submittedCardNum = action.submittedCardNum;
-    usersById[action.userId].selectedCardNum = action.selectedCardNum;
+    usersById[action.userId].guessedCardNum = action.guessedCardNum;
   });
 
   allGameUserNames.forEach((user) => {
@@ -354,7 +354,7 @@ router.get("/:gameKey?/choices", async (req, res, next) => {
 async function assignPoints(game) {
   const currentRound = await getCurrentRoundFromId(game.currentRoundId);
 
-  const gameUsers = await getGameFromGameKey(game.gameKey);
+  const gameUsers = await getAllUsersInGame(game.id);
 
   const allCurrentRoundActions = await getAllCurrentRoundActions(
     game.currentRoundId
@@ -372,7 +372,7 @@ async function assignPoints(game) {
     cardVotes[currentRound.currentCardNum] === game.numUsers - 1;
   if (noUserGuessedCorrect || allUserGuessedCorrect) {
     await Promise.all(
-      gameUsers.map(async (gameUser) => {
+      Object.values(gameUsers).map(async (gameUser) => {
         const isActiveUser = gameUser.userId === currentRound.activeUserId;
         if (isActiveUser) {
           return await pool.query(
@@ -440,7 +440,7 @@ router.post("/:gameKey?/guess", async (req, res, next) => {
 
     const game = await getGameFromGameKey(gameKey);
 
-    const updateUserRoundActionsResponse = await pool.query(
+    await pool.query(
       'UPDATE "userRoundActions" SET "guessedCardNum" = $1 WHERE "roundId" = $2 AND "userId" = $3 RETURNING *',
       [cardNum, game.currentRoundId, userId]
     );
@@ -455,14 +455,15 @@ router.post("/:gameKey?/guess", async (req, res, next) => {
       allCurrentRoundActionsResponse.rowCount === usersAwaitingSubmissionCount;
     if (readyToProceed) {
       await assignPoints(game);
-      // TODO: publish new round response
       await pool.query(
         'UPDATE "rounds" SET "gameStage" = $1 WHERE "id" = $2 RETURNING *',
         [3, game.currentRoundId]
       );
     }
 
-    res.json(updateUserRoundActionsResponse.rows[0]);
+    const wss = req.app.get("wss");
+    await handlePublish({ gameKey, wss });
+    return res.json({ success: true });
   } catch (error) {
     console.error(error);
     next(error);
@@ -502,7 +503,7 @@ async function updateUserHands(game) {
   }
 
   await Promise.all(
-    gameUsers.map(async (gameUser, idx) => {
+    Object.values(gameUsers).map(async (gameUser, idx) => {
       const hand = gameUser.hand;
       for (let i = 0; i < 6; i++) {
         hand.push(deck.shift());
