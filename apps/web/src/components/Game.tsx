@@ -3,6 +3,7 @@ import ActiveUserGame from "components/ActiveUserGame";
 import GameCardsDisplay from "components/GameCardsDisplay";
 import GameInfoDisplay from "components/GameInfoDisplay";
 import GuessersGame from "components/GuessersGame";
+import Results from "components/Results";
 import Setup from "components/Setup";
 import useGame, { GameState } from "hooks/useGame";
 import useUser from "hooks/useUser";
@@ -32,7 +33,9 @@ function getCurrentGameContent({
   const adminSelectingCardAndPromptPhase = round?.gameStage === 0;
   const guessersPlayingTheGame = [1, 2].includes(round?.gameStage || -1);
 
-  if (adminSelectingCardAndPromptPhase) {
+  if (game?.isGameEnd) {
+    return <div>Game is complete</div>;
+  } else if (adminSelectingCardAndPromptPhase) {
     return isActiveUser ? (
       <ActiveUserGame currentUser={currentUser} />
     ) : (
@@ -54,6 +57,8 @@ function getCurrentGameContent({
         )}
       </div>
     );
+  } else if (round?.gameStage === 3) {
+    return <Results />;
   } else {
     return <div>Game is started</div>;
   }
